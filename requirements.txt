@@ -1,0 +1,13 @@
+# Core deps for CFT runs
+torch>=2.1
+torchvision>=0.16
+transformers>=4.45
+huggingface_hub>=0.20
+numpy
+pandas
+pillow
+tqdm
+fvcore             # used by Swin's measure_flops
+# Data prep (CBIS-DDSM)
+# Uncomment if you need to (re)build CBIS-DDSM splits:
+# kagglehub
