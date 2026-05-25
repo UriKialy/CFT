@@ -1,0 +1,67 @@
+# ── Datasets ──
+data/
+datasets/
+vtab-1k/
+vtab-1k.tar
+cub200/
+CUB_200_2011/
+CUB_200_2011.tgz
+cbis-ddsm/
+cbis_ddsm/
+
+# ── Model checkpoints / weights ──
+*.pth
+*.pt
+*.bin
+*.ckpt
+*.safetensors
+checkpoints/
+results/
+runs/
+wandb/
+outputs/
+
+# ── HuggingFace / Torch caches ──
+.cache/
+.huggingface/
+hf_cache/
+
+# ── Images and other media (keep code only) ──
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.bmp
+*.tif
+*.tiff
+*.webp
+*.dcm
+*.npy
+*.npz
+
+# ── Partial / temp downloads ──
+*.part
+*.tmp
+*.crdownload
+
+# ── Python ──
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.ipynb_checkpoints/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+build/
+dist/
+
+# ── Editors / OS ──
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.swp
+*.swo

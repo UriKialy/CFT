@@ -30,15 +30,6 @@ CONFIG = {
     "scheduler":        "cosine",
     "num_workers":      4,
 
-    # -- VPT-Deep --
-    "vpt_num_tokens":   50,
-    "vpt_dropout":      0.1,
-
-    # -- AdaptFormer --
-    "adapter_bottleneck": 64,
-    "adapter_dropout":    0.1,
-    "adapter_scalar":     "1.0",
-
     # -- CFT (Circuit Fine-Tune) --
     "cft_discovery_pct":  15,     # % of train data for circuit discovery
     "cft_param_budget":   20,     # % of total backbone params to unfreeze
@@ -49,33 +40,8 @@ CONFIG = {
     "seed":             42,
 }
 
-# -- Per-task configs from SSF paper repo --
-SSF_TASK_CONFIGS = {
-    "cifar":                {"lr": 5e-3, "wd": 5e-5, "drop_path": 0.0},
-    "caltech101":           {"lr": 1e-3, "wd": 5e-2, "drop_path": 0.1},
-    "dtd":                  {"lr": 5e-3, "wd": 5e-5, "drop_path": 0.0},
-    "oxford_flowers102":    {"lr": 5e-3, "wd": 5e-5, "drop_path": 0.0},
-    "oxford_iiit_pet":      {"lr": 5e-3, "wd": 5e-5, "drop_path": 0.0},
-    "sun397":               {"lr": 5e-3, "wd": 5e-5, "drop_path": 0.0},
-    "svhn":                 {"lr": 1e-2, "wd": 5e-5, "drop_path": 0.0},
-    "patch_camelyon":       {"lr": 5e-3, "wd": 5e-5, "drop_path": 0.0},
-    "eurosat":              {"lr": 3e-3, "wd": 5e-2, "drop_path": 0.2},
-    "resisc45":             {"lr": 2e-3, "wd": 5e-5, "drop_path": 0.1},
-    "diabetic_retinopathy": {"lr": 5e-3, "wd": 5e-5, "drop_path": 0.2},
-    "clevr_count":          {"lr": 2e-3, "wd": 5e-2, "drop_path": 0.1},
-    "clevr_dist":           {"lr": 5e-2, "wd": 5e-2, "drop_path": 0.1},
-    "dmlab":                {"lr": 5e-3, "wd": 5e-5, "drop_path": 0.1},
-    "kitti":                {"lr": 1e-2, "wd": 5e-5, "drop_path": 0.0},
-    "dsprites_loc":         {"lr": 1e-2, "wd": 5e-5, "drop_path": 0.0},
-    "dsprites_ori":         {"lr": 5e-3, "wd": 5e-5, "drop_path": 0.2},
-    "smallnorb_azi":        {"lr": 2e-2, "wd": 5e-5, "drop_path": 0.1},
-    "smallnorb_ele":        {"lr": 5e-3, "wd": 5e-2, "drop_path": 0.2},
-}
-
 # -- Per-task configs for CFT (tune per task as needed) --
-# Optuna-tuned best hyperparameters per task (source: experiments/optuna_run_2026_04)
-# Best CFT hyperparameters per task — merged from optuna search (2026-04) + SPT_SSF_run sweeps
-# Selection: highest best_acc across all sources per task. _source field tracks origin.
+# Best CFT hyperparameters per task
 CFT_TASK_CONFIGS = {
     "caltech101":             {"lr": 3.0000e-04, "wd": 1.0000e-02, "label_smoothing": 0.1, "batch_size": 64,  "cft_budget": 17, "dropout": 0.1000, "stop_after": 16, "_source": "disc100_early_ep11", "_best_acc": 96.50},
     "cifar":                  {"lr": 3.0000e-04, "wd": 1.0000e-02, "label_smoothing": 0.1, "batch_size": 128, "cft_budget": 10, "dropout": 0.1500, "stop_after": 36, "_source": "disc100", "_best_acc": 74.50},
@@ -119,7 +85,7 @@ SPECIALIZED_TASKS = ["patch_camelyon", "eurosat", "resisc45", "diabetic_retinopa
 STRUCTURED_TASKS = ["clevr_count", "clevr_dist", "dmlab", "kitti",
                     "dsprites_loc", "dsprites_ori", "smallnorb_azi", "smallnorb_ele"]
 
-METHODS = ["full_finetune", "linear_probe", "vpt_deep", "ssf", "adaptformer", "cft"]
+METHODS = ["cft"]
 
 # Short names for display
 TASK_SHORT_NAMES = {
@@ -183,24 +149,16 @@ SWIN_CONFIG = {
     "batch_size":       512,
     "learning_rate":    1e-4,
     "weight_decay":     0.01,
-    "num_epochs":       80,
+    "num_epochs":       50,
     "optimizer":        "adamw",
     "scheduler":        "cosine",
     "num_workers":      4,
 
-    # ── VPT-Deep ──
-    "vpt_num_tokens":   10,
-    "vpt_dropout":      0.1,
-
-    # ── AdaptFormer ──
-    "adapter_bottleneck": 64,
-    "adapter_dropout":    0.1,
-    "adapter_scalar":     "0.1",
 
     # ── CFT (Circuit Fine-Tune) ──
-    "cft_discovery_pct":  100,     # % of train data for circuit discovery
+    "cft_discovery_pct":  20,     # % of train data for circuit discovery
     "cft_param_budget":   17,      # % of total backbone params to unfreeze
-    "cft_ig_steps":       12,      # Integrated gradient steps
+    "cft_ig_steps":       8,      # Integrated gradient steps
     "cft_batch_size":     32,      # Batch size for EAP-IG
 
     # ── Output ──
@@ -209,19 +167,12 @@ SWIN_CONFIG = {
 }
 
 SWIN_METHOD_BATCH_SIZE = {
-    "full_finetune": 64,
-    "linear_probe": 128,
-    "vpt_deep": 128,
-    "ssf": 64,
-    "adaptformer": 128,
     "cft": 64,
 }
-# Run 10: Conservative fixes based on Run 9 evidence
-# Philosophy: Revert what hurt, keep what helped, add batch size as gentle regularizer
+
 # ── LEARNING RATES ──
-# Only change the problem tasks, everything else keep from Run 3
+
 SWIN_CFT_TASK_LRS = {
-    # These worked well in Run 3 — KEEP:
     "caltech101":           5e-4,
     "cifar":                5e-4,
     "dtd":                  5e-4,
@@ -236,23 +187,20 @@ SWIN_CFT_TASK_LRS = {
     "dsprites_loc":         5e-4,
     "dsprites_ori":         5e-4,
     "kitti":                5e-4,
-    # CHANGES:
-    "patch_camelyon":       5e-5,   # was 1e-4, still peaked at ep2 then collapsed.
-                                     # Binary task needs ultra-low LR to not destroy features.
-    "clevr_count":          1e-4,   # was 3e-4, still wildly unstable. Cut to 1e-4.
-    "clevr_dist":           1e-4,   # same reasoning
-    "smallnorb_azi":        1e-4,   # was 3e-4, 100% train / 19% test = still overfitting hard
-    "smallnorb_ele":        1e-4,   # same
+    "patch_camelyon":       5e-5,   
+    "clevr_count":          1e-4,  
+    "clevr_dist":           1e-4,   
+    "smallnorb_azi":        1e-4,  
+    "smallnorb_ele":        1e-4,   
 }
 
 # ── LABEL SMOOTHING ──
 SWIN_CFT_LABEL_SMOOTHING = {
-    # Keep what worked, increase for the 5 problem tasks
-    "clevr_count":          0.3,    # was 0.2, still massive overfit gap
-    "clevr_dist":           0.3,    # was 0.2
-    "smallnorb_azi":        0.4,    # was 0.3, 100%→19% is catastrophic. Max smoothing.
-    "smallnorb_ele":        0.4,    # was 0.3
-    "patch_camelyon":       0.2,    # was 0.15, bump slightly
+    "clevr_count":          0.3,    
+    "clevr_dist":           0.3,    
+    "smallnorb_azi":        0.4,   
+    "smallnorb_ele":        0.4,    
+    "patch_camelyon":       0.2,   
     "dmlab":                0.15,
     "diabetic_retinopathy": 0.15,
     "dsprites_loc":         0.15,
@@ -262,112 +210,47 @@ SWIN_CFT_LABEL_SMOOTHING = {
 
 # ── BUDGET ──
 SWIN_CFT_TASK_BUDGETS = {
-    "clevr_count":    0.25,   # was 0.20. Bump more — 50.9% is still way off.
-                               # Need to capture more stage_2 MLPs too.
+    "clevr_count":    0.25,  
     "clevr_dist":     0.25,
-    "smallnorb_azi":  0.25,   # was 0.20, give it more capacity
+    "smallnorb_azi":  0.25,   
     "smallnorb_ele":  0.25,
     "dsprites_loc":   0.20,
     "dmlab":          0.17,
-    "patch_camelyon":  0.20,  # was 0.17, give it more room
-    "resisc45":       0.20,   # was 0.17, still 6% short — more capacity might help
+    "patch_camelyon":  0.20,  
+    "resisc45":       0.20,   
 }
 
 # ── EPOCHS ──
 SWIN_CFT_TASK_EPOCHS = {
-    # Bump problem tasks to 100, let patience decide
-    "caltech101": 50, "cifar": 80, "dtd": 50, "oxford_flowers102": 50,
-    "oxford_iiit_pet": 50, "sun397": 80, "svhn": 80,
-    "diabetic_retinopathy": 80, "eurosat": 50,
-    "resisc45":          100,   # was 80, plateaued at 85.5 by ep55 — try longer
-    "patch_camelyon":    100,   # was 80, with lower LR needs more time
-    "clevr_count":       100,   # was 80, with 1e-4 LR will learn slower
-    "clevr_dist":        100,
-    "dmlab":              80,
-    "dsprites_loc":       80,
-    "dsprites_ori":       80,
+    "caltech101": 50, "cifar": 50, "dtd": 50, "oxford_flowers102": 50,
+    "oxford_iiit_pet": 50, "sun397": 50, "svhn": 50,
+    "diabetic_retinopathy": 50, "eurosat": 50,
+    "resisc45":          50,   
+    "patch_camelyon":    50,   
+    "clevr_count":       50,  
+    "clevr_dist":        50,
+    "dmlab":              50,
+    "dsprites_loc":       50,
+    "dsprites_ori":       100,
     "kitti":              50,
-    "smallnorb_azi":     100,   # was 80, lower LR = needs more time
-    "smallnorb_ele":     100,
+    "smallnorb_azi":     50,   
+    "smallnorb_ele":     50,
 }
 
-# ── DROPOUT — increase for the 5 worst overfitters ──
 SWIN_CFT_DROPOUT = {
     # Keep what worked
     "caltech101": 0.0, "cifar": 0.05, "dtd": 0.0, "oxford_flowers102": 0.0,
     "oxford_iiit_pet": 0.0, "sun397": 0.05, "svhn": 0.0,
     "diabetic_retinopathy": 0.1, "eurosat": 0.0, "resisc45": 0.0,
     "dmlab": 0.1, "dsprites_loc": 0.05, "dsprites_ori": 0.05, "kitti": 0.0,
-    # Bump:
-    "patch_camelyon": 0.15,     # was 0.1
-    "clevr_count":    0.15,     # was 0.1
-    "clevr_dist":     0.15,     # was 0.1
-    "smallnorb_azi":  0.2,      # was 0.15
-    "smallnorb_ele":  0.2,      # was 0.15
+
+    "patch_camelyon": 0.15,   
+    "clevr_count":    0.15,    
+    "clevr_dist":     0.15,    
+    "smallnorb_azi":  0.2,      
+    "smallnorb_ele":  0.2,     
 }
 
-
-
-SWIN_CFT_TASK_EPOCHS = {
-    "caltech101":           50,
-    "cifar":                100,
-    "dtd":                  50,
-    "oxford_flowers102":    50,
-    "oxford_iiit_pet":      50,
-    "sun397":               100,
-    "svhn":                 100,
-    "diabetic_retinopathy": 100,
-    "eurosat":              50,
-    "patch_camelyon":       100,
-    "resisc45":             100,
-    "clevr_count":          100,
-    "clevr_dist":           100,
-    "dmlab":                100,
-    "dsprites_loc":         100,
-    "dsprites_ori":         100,
-    "kitti":                50,
-    "smallnorb_azi":        50,
-    "smallnorb_ele":        100,
-}
-
-# ── Per-task configs from SSF paper repo (train_scripts/vit/vtab/*/train_ssf.sh) ──
-SWIN_SSF_TASK_CONFIGS = {
-    "cifar":                {"lr": 5e-3, "wd": 5e-2, "drop_path": 0.0},
-    "caltech101":           {"lr": 1e-3, "wd": 5e-2, "drop_path": 0.1},
-    "dtd":                  {"lr": 5e-3, "wd": 5e-2, "drop_path": 0.0},
-    "oxford_flowers102":    {"lr": 5e-3, "wd": 5e-2, "drop_path": 0.0},
-    "oxford_iiit_pet":      {"lr": 5e-3, "wd": 5e-2, "drop_path": 0.0},
-    "sun397":               {"lr": 5e-3, "wd": 5e-2, "drop_path": 0.0},
-    "svhn":                 {"lr": 1e-2, "wd": 5e-2, "drop_path": 0.0},
-    "patch_camelyon":       {"lr": 5e-3, "wd": 5e-2, "drop_path": 0.0},
-    "eurosat":              {"lr": 3e-3, "wd": 5e-2, "drop_path": 0.2},
-    "resisc45":             {"lr": 2e-3, "wd": 5e-2, "drop_path": 0.1},
-    "diabetic_retinopathy": {"lr": 5e-3, "wd": 5e-2, "drop_path": 0.2},
-    "clevr_count":          {"lr": 2e-3, "wd": 5e-2, "drop_path": 0.1},
-    "clevr_dist":           {"lr": 5e-2, "wd": 5e-2, "drop_path": 0.1},
-    "dmlab":                {"lr": 5e-3, "wd": 5e-2, "drop_path": 0.1},
-    "kitti":                {"lr": 1e-2, "wd": 5e-2, "drop_path": 0.0},
-    "dsprites_loc":         {"lr": 1e-2, "wd": 5e-2, "drop_path": 0.0},
-    "dsprites_ori":         {"lr": 5e-3, "wd": 5e-2, "drop_path": 0.2},
-    "smallnorb_azi":        {"lr": 2e-2, "wd": 5e-2, "drop_path": 0.1},
-    "smallnorb_ele":        {"lr": 5e-3, "wd": 5e-2, "drop_path": 0.2},
-}
-
-# ── VTAB-1K task list ──
-_SWIN_VTAB_TASKS_UNUSED = [
-    # Natural (7)
-    "caltech101", "cifar", "dtd", "oxford_flowers102",
-    "oxford_iiit_pet", "sun397", "svhn",
-    # Specialized (4)
-    "diabetic_retinopathy", "eurosat", "patch_camelyon", "resisc45",
-    # Structured (8)
-    "clevr_count", "clevr_dist", "dmlab", "dsprites_loc",
-    "dsprites_ori", "kitti", "smallnorb_azi", "smallnorb_ele",
-]
-
-_SWIN_STRUCTURED_TASKS_UNUSED = {"clevr_count", "clevr_dist", "dmlab", "dsprites_loc", "dsprites_ori", "kitti", "smallnorb_azi", "smallnorb_ele"}
-
-_SWIN_METHODS_UNUSED = ["full_finetune", "linear_probe", "vpt_deep", "ssf", "adaptformer", "cft"]
 
 
 # =============================================================================
@@ -379,10 +262,8 @@ _SWIN_METHODS_UNUSED = ["full_finetune", "linear_probe", "vpt_deep", "ssf", "ada
 # =============================================================================
 GEMMA_TASKS = ["cub200"]
 
-# NOTE: notebook had this loaded at import via _CUB_CLASS_NAMES — now loaded
-# at runtime via dataset_gemma.load_cub_class_names(config["data_dir"]).
 GEMMA_TASK_CLASS_NAMES = {
-    "cub200": None,  # populated at runtime
+    "cub200": None,  
 }
 
 GEMMA_TASK_DOMAIN_HINT = {
@@ -409,7 +290,6 @@ GEMMA_CONFIG = {
     "learning_rate":    1e-4,
     "weight_decay":     0.01,
     "num_epochs":       4,
-    "epochs_full_ft":   7,
     "optimizer":        "adamw",
     "scheduler":        "cosine",
     "num_workers":      4,
@@ -422,12 +302,6 @@ GEMMA_CONFIG = {
     "cft_param_budget":   17,
     "cft_ig_steps":       8,
     "cft_batch_size":     32,
-    # ── LoRA ──
-    "lora_r":           16,
-    "lora_alpha":       32,
-    "lora_dropout":     0.05,
-    "lora_epochs":      10,
-    "lora_lr":          2e-4,
 
     # ── Output ──
     "save_dir":         "/workspace/cft_benchmark/results",
@@ -439,13 +313,10 @@ GEMMA_CFT_DROPOUT = {"cub200": 0.1}
 
 GEMMA_CFT_TASK_LRS = {"cub200": 5e-5}
 
-GEMMA_CFT_TASK_EPOCHS = {"cub200": 10}
+GEMMA_CFT_TASK_EPOCHS = {"cub200": 4}
 
 
-# =============================================================================
-# Dispatcher: pick the right config / per-task HPs for a backbone
-# (NEW glue, ~20 lines)
-# =============================================================================
+
 def get_backbone_config(backbone):
     """Return the CONFIG dict to use for this backbone.
 

@@ -197,4 +197,3 @@ manual-tuning sources — no grid-search code is included.
 
 - Hanna, Pezeshkpour, Berg-Kirkpatrick. *Have Faith in Faithfulness: Going Beyond
   Circuit Overlap When Faithfulness Matters.* COLM 2024 — `EAP_IG.pdf`.
-- Houlsby et al. *AdaptFormer*; Lian et al. *SSF*; Jia et al. *VPT* — baselines.
