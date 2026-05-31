@@ -1,7 +1,5 @@
 """
-Gemma PEFT methods — extracted verbatim from CFT_Gemma3_4B_IT_CUB200.ipynb cell 14.
-
-CFT-only build keeps apply_lora() out (no LoRA in this repo) — only apply_cft.
+Gemma PEFT methods — extracted verbatim from CFT_Gemma3_4B_IT_CUB200
 """
 from collections import defaultdict
 import torch

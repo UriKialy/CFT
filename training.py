@@ -11,7 +11,7 @@ from torch.utils.data.distributed import DistributedSampler
 import torch.distributed as dist
 
 from dataset import GPUCachedDataset
-from methods import count_trainable_params, count_total_params
+from Utils import count_trainable_params, count_total_params
 
 
 # =============================================================================

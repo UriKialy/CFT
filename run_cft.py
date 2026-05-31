@@ -32,7 +32,7 @@ except Exception:
 
 from config import CONFIG, CFT_TASK_CONFIGS, VTAB_TASKS, setup_environment
 from dataset import load_vtab_task
-from methods import build_model
+from Utils import build_model
 from training import train_and_evaluate, measure_model_stats
 from circuit_discovery import pretrain_classifier, discover_circuits_eap_ig, select_nodes_by_param_budget
 
@@ -364,10 +364,10 @@ def run_vit(tasks=None, config=None, use_ddp=False, rank=0, local_rank=0, world_
 def run_swin(tasks=None, config=None, **_unused):
     """Run CFT on Swin (HuggingFace Swinv2) for VTAB-1K / CBIS-DDSM.
 
-    Uses methods_swin / circuit_discovery_swin / training_swin (all extracted
+    Uses Swin / circuit_discovery_swin / training_swin (all extracted
     verbatim from Swin_vtab1k_CFT.ipynb).
     """
-    import methods_swin as M
+    import Swin as M
     import circuit_discovery_swin as D
     import training_swin as T
     from dataset import load_vtab_task
@@ -419,7 +419,7 @@ def run_swin(tasks=None, config=None, **_unused):
 def run_gemma(tasks=None, config=None, **_unused):
     """Run CFT on Gemma-3-4B-IT for CUB-200 (the notebook's only task).
 
-    Uses methods_gemma / circuit_discovery_gemma / training_gemma / gemma_utils
+    Uses Gemma / circuit_discovery_gemma / training_gemma / gemma_utils
     (all extracted verbatim from CFT_Gemma3_4B_IT_CUB200.ipynb).
 
     NOTE: The notebook code references several module-level globals
@@ -427,7 +427,7 @@ def run_gemma(tasks=None, config=None, **_unused):
     We inject them into the relevant modules before calling their functions.
     """
     from transformers import AutoProcessor, AutoModelForImageTextToText
-    import methods_gemma as MG
+    import Gemma as MG
     import circuit_discovery_gemma as DG
     import training_gemma as TG
     import gemma_utils as GU
@@ -487,7 +487,7 @@ def run_gemma(tasks=None, config=None, **_unused):
 
         # 4) Apply CFT mask and train_generative
         # The notebook's apply_cft references `used_params` as a notebook-level
-        # global — inject it into methods_gemma before calling apply_cft.
+        # global — inject it into Gemma before calling apply_cft.
         MG.used_params = used_params
         model_cft = MG.apply_cft(model, selected_nodes, circuit_info["nodes_map"])
         model_cft.gradient_checkpointing_enable()

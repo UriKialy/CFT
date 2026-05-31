@@ -832,8 +832,3 @@ def build_model(method, num_classes, config, selected_nodes=None, nodes_map=None
 
 
 # Quick sanity check
-print("Building test model (linear probe)...")
-_m = build_model("linear_probe", 10, CONFIG)
-print(f"  Output shape: {_m(torch.randn(1, 3, CONFIG['image_size'], CONFIG['image_size']).to(device)).logits.shape}")
-del _m; gc.collect(); torch.cuda.empty_cache()
-print("✅ Model builder works.")
