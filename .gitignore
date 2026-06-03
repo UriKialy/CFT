@@ -65,3 +65,7 @@ dist/
 Thumbs.db
 *.swp
 *.swo
+cache/
+*.log
+*.tar
+/tmp/
