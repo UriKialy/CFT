@@ -7,7 +7,6 @@ from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
 from PIL import Image
 
-
 class VTABDataset(Dataset):
     """Load VTAB-1K task from text file listing (img_path label)."""
 
@@ -41,7 +40,6 @@ class VTABDataset(Dataset):
             img = self.transform(img)
         return img, label
 
-
 class GPUCachedDataset(Dataset):
     """Pre-load all images as tensors on GPU for fast training."""
 
@@ -68,7 +66,6 @@ class GPUCachedDataset(Dataset):
     def __getitem__(self, idx):
         return self.images[idx], self.labels[idx]
 
-
 def get_transforms(image_size):
     """Standard transforms for ViT: resize, center crop, normalize."""
     return transforms.Compose([
@@ -79,7 +76,6 @@ def get_transforms(image_size):
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),
     ])
-
 
 def load_vtab_task(task_name, config, device=None):
     """Load train and test datasets for a single VTAB task."""

@@ -12,7 +12,6 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-
 # =============================================================================
 # Pre-train classifier head (linear probe) for meaningful discovery gradients
 # =============================================================================
@@ -75,7 +74,6 @@ def pretrain_classifier(model, dataset, device, num_epochs=5, lr=1e-3, batch_siz
         p.requires_grad = True
     print(f"  Classifier pre-training done.")
 
-
 # =============================================================================
 # Corruption methods
 # =============================================================================
@@ -101,7 +99,6 @@ def create_patch_shuffled_image(image_tensor, patch_size=16):
     shuffled = shuffled.permute(0, 3, 1, 4, 2, 5).contiguous()
     return shuffled.view(B, C, H, W)
 
-
 def create_gaussian_noise_image(image_tensor, **kwargs):
     """Corrupt images with Gaussian noise matching per-image statistics.
     Destroys all structure (spatial + texture/color).
@@ -109,7 +106,6 @@ def create_gaussian_noise_image(image_tensor, **kwargs):
     mean = image_tensor.mean(dim=(2, 3), keepdim=True)
     std = image_tensor.std(dim=(2, 3), keepdim=True).clamp(min=1e-6)
     return mean + std * torch.randn_like(image_tensor)
-
 
 def create_channel_shuffled_image(image_tensor, patch_size=16):
     """Corrupt images by shuffling channels within each patch.
@@ -129,11 +125,9 @@ def create_channel_shuffled_image(image_tensor, patch_size=16):
     result = patches.permute(0, 3, 1, 4, 2, 5).contiguous()
     return result.view(B, C, H, W)
 
-
 def create_intensity_invert_image(image_tensor, **kwargs):
     """Negate normalized image. Mammo: white-on-black <-> black-on-white."""
     return -image_tensor
-
 
 def create_cutout_image(image_tensor, mask_size=64, **kwargs):
     """Mask random rectangle to 0 per image. Targets local-lesion priors."""
@@ -145,7 +139,6 @@ def create_cutout_image(image_tensor, mask_size=64, **kwargs):
         out[b, :, y:y + mask_size, x:x + mask_size] = 0.0
     return out
 
-
 CORRUPTION_METHODS = {
     "patch_shuffle":    create_patch_shuffled_image,
     "gaussian":         create_gaussian_noise_image,
@@ -153,7 +146,6 @@ CORRUPTION_METHODS = {
     "intensity_invert": create_intensity_invert_image,
     "cutout":           create_cutout_image,
 }
-
 
 # =============================================================================
 # Metric functions
@@ -169,7 +161,6 @@ def compute_logit_difference(logits, labels):
     next_best = masked.max(dim=1).values
 
     return (gt_logits - next_best).mean()
-
 
 def compute_log_prob_difference(logits, labels):
     """LogProb(GT) - LogProb(NextBest), after softmax.
@@ -187,12 +178,10 @@ def compute_log_prob_difference(logits, labels):
 
     return (gt_logprobs - next_best).mean()
 
-
 def compute_gt_logit(logits, labels):
     B = logits.shape[0]
     batch_idx = torch.arange(B, device=logits.device)
     return logits[batch_idx, labels].mean()
-
 
 # =============================================================================
 # Node Map Construction
@@ -231,7 +220,6 @@ def get_vit_nodes(model):
 
     print(f"  {len(nodes)} nodes ({n_heads * n_layers} heads + {n_layers} MLPs)")
     return nodes
-
 
 # =============================================================================
 # EAP-IG Circuit Discovery (log-prob difference variant)
@@ -501,7 +489,6 @@ def discover_circuits_eap_ig(model, dataset, config, device=None, metric="log_pr
         "method": f"EAP-IG-{metric}",
     }
 
-
 # =============================================================================
 # EAP-IG v1 (GT logit, repo-faithful, rank-based normalization)
 # =============================================================================
@@ -737,7 +724,6 @@ def discover_circuits_eap_ig_v1(model, dataset, config, device=None):
         "nodes_map": nodes_map,
         "method": "EAP-IG-KL",
     }
-
 
 # =============================================================================
 # Node Selection by Parameter Budget

@@ -33,9 +33,8 @@ except Exception:
 from config import CONFIG, CFT_TASK_CONFIGS, VTAB_TASKS, setup_environment
 from dataset import load_vtab_task
 from Utils import build_model
-from training import train_and_evaluate, measure_model_stats
+from training import train_and_evaluate
 from circuit_discovery import pretrain_classifier, discover_circuits_eap_ig, select_nodes_by_param_budget
-
 
 def disable_hf_progress_output():
     """Disable Hugging Face progress bars for cleaner logs."""
@@ -43,7 +42,6 @@ def disable_hf_progress_output():
         hf_disable_progress_bars()
     if hasattr(transformers_logging, "disable_progress_bar"):
         transformers_logging.disable_progress_bar()
-
 
 def init_ddp(use_ddp=False):
     """Initialize DDP from torchrun environment variables."""
@@ -66,15 +64,12 @@ def init_ddp(use_ddp=False):
 
     return should_use_ddp, rank, local_rank, world_size
 
-
 def destroy_ddp(use_ddp=False):
     if use_ddp and dist.is_initialized():
         dist.destroy_process_group()
 
-
 def is_main_process(rank):
     return rank == 0
-
 
 def log_checkpoint_info(model, config, rank, stage):
     """Print which checkpoint ID was requested and what was actually loaded."""
@@ -85,12 +80,10 @@ def log_checkpoint_info(model, config, rank, stage):
     print(f"[{stage}] checkpoint requested: {requested}")
     print(f"[{stage}] checkpoint loaded:    {loaded}")
 
-
 def log_checkpoint_load_event(rank, stage, event):
     """Print explicit start/end events for checkpoint loading."""
     if is_main_process(rank):
         print(f"[{stage}] {event} loading weights...")
-
 
 def make_serializable(obj):
     if isinstance(obj, (np.integer, np.int64)):
@@ -100,7 +93,6 @@ def make_serializable(obj):
     if isinstance(obj, np.ndarray):
         return obj.tolist()
     return obj
-
 
 def build_cft_method_name(method_tag, metric, pretrain_head, corruption, score_norm, method):
     """Build a stable method name that captures the discovery metric option set."""
@@ -114,7 +106,6 @@ def build_cft_method_name(method_tag, metric, pretrain_head, corruption, score_n
     if score_norm != "param_count":
         parts.append(f"norm_{score_norm}")
     return "__".join(parts)
-
 
 def run_vit(tasks=None, config=None, use_ddp=False, rank=0, local_rank=0, world_size=1,
             metric="log_prob_diff", pretrain_head=False, corruption="patch_shuffle",
@@ -258,7 +249,6 @@ def run_vit(tasks=None, config=None, use_ddp=False, rank=0, local_rank=0, world_
             log_checkpoint_load_event(rank, stage="train", event="END")
             base_model = model.module if hasattr(model, "module") else model
             log_checkpoint_info(base_model, config, rank, stage="train")
-            stats = measure_model_stats(model, config, "cft") if is_main_process(rank) else {}
             if use_ddp:
                 if device.type == "cuda":
                     model = DDP(model, device_ids=[local_rank], output_device=local_rank)
@@ -272,7 +262,6 @@ def run_vit(tasks=None, config=None, use_ddp=False, rank=0, local_rank=0, world_
                 use_ddp=use_ddp, rank=rank, world_size=world_size,
                 stop_after_epoch=stop_after_epoch,
             )
-            results.update(stats)
             results["method"] = method_name
             results["task"] = task_name
             results["circuit_info"] = {
@@ -352,7 +341,6 @@ def run_vit(tasks=None, config=None, use_ddp=False, rank=0, local_rank=0, world_
 
     return all_results
 
-
 # =============================================================================
 # =============================================================================
 # SWIN / GEMMA ORCHESTRATORS — NEW dispatch glue (the only substantial
@@ -365,7 +353,6 @@ def run_swin(tasks=None, config=None, **_unused):
     """Run CFT on Swin (HuggingFace Swinv2) for VTAB-1K / CBIS-DDSM.
 
     Uses Swin / circuit_discovery_swin / training_swin (all extracted
-    verbatim from Swin_vtab1k_CFT.ipynb).
     """
     import Swin as M
     import circuit_discovery_swin as D
@@ -415,12 +402,11 @@ def run_swin(tasks=None, config=None, **_unused):
     print("\n[Swin] Done.")
     return all_results
 
-
 def run_gemma(tasks=None, config=None, **_unused):
     """Run CFT on Gemma-3-4B-IT for CUB-200 (the notebook's only task).
 
     Uses Gemma / circuit_discovery_gemma / training_gemma / gemma_utils
-    (all extracted verbatim from CFT_Gemma3_4B_IT_CUB200.ipynb).
+    (all.
 
     NOTE: The notebook code references several module-level globals
     (processor, model, CONFIG, TASK_CLASS_NAMES, STRUCTURED_TASK_CONFIG).

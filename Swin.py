@@ -1,5 +1,5 @@
 """
-Swin PEFT methods — extracted verbatim from Swin_vtab1k_CFT.ipynb cell 7.
+Swin PEFT methods
 
 CFT-only build keeps all original methods (full_finetune, linear_probe, vpt_deep,
 ssf, adaptformer, cft) so build_model still works, but only cft is used in this
@@ -18,7 +18,6 @@ from transformers import Swinv2ForImageClassification, Swinv2Config, Swinv2Model
 from transformers.modeling_outputs import BaseModelOutput
 
 # =============================================================================
-# CELL 5: PEFT Method Implementations for HuggingFace SwinV2
 # =============================================================================
 # Each method modifies a base Swinv2ForImageClassification in-place.
 # VPT:  follows vpt-main/src/models/vit_prompt/swin_transformer.py
@@ -40,27 +39,22 @@ def freeze_backbone(model):
         if "classifier" not in name:
             param.requires_grad = False
 
-
 def count_trainable_params(model):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
-
 def count_total_params(model):
     return sum(p.numel() for p in model.parameters())
-
 
 # ======================= FULL FINE-TUNE ====================================
 def apply_full_finetune(model, num_classes, config):
     """All parameters trainable + new head."""
     return model
 
-
 # ======================= LINEAR PROBE ======================================
 def apply_linear_probe(model, num_classes, config):
     """Only classifier head trainable."""
     freeze_backbone(model)
     return model
-
 
 # ======================= VPT-DEEP ==========================================
 # Ref: vpt-main/src/models/vit_prompt/swin_transformer.py
@@ -408,7 +402,6 @@ def apply_vpt_deep(model, num_classes, config):
 
     return model
 
-
 # ======================= SSF ==============================================
 # Ref: SSF-main/models/swin_transformer.py — init_ssf_scale_shift, ssf_ada
 # HF SwinV2 differences from repo:
@@ -425,7 +418,6 @@ def init_ssf_scale_shift(dim):
     nn.init.normal_(shift, std=0.02)
     return scale, shift
 
-
 def ssf_ada(x, scale, shift):
     """Exact SSF transform from SSF repo."""
     if x.shape[-1] == scale.shape[0]:
@@ -434,7 +426,6 @@ def ssf_ada(x, scale, shift):
         return x * scale.view(1, -1, 1, 1) + shift.view(1, -1, 1, 1)
     else:
         raise ValueError(f"SSF shape mismatch: x {x.shape} vs scale {scale.shape}")
-
 
 class SSFWrapper(nn.Module):
     """Wraps any module, applying SSF (scale+shift) to its output."""
@@ -459,7 +450,6 @@ class SSFWrapper(nn.Module):
         if isinstance(x, tuple):
             return (ssf_ada(x[0], self.scale, self.shift),) + x[1:]
         return ssf_ada(x, self.scale, self.shift)
-
 
 def apply_ssf(model, num_classes, config, task_name=""):
     """Apply SSF: learnable scale & shift after every linear/norm output.
@@ -516,7 +506,6 @@ def apply_ssf(model, num_classes, config, task_name=""):
 
     return model
 
-
 # ======================= ADAPTFORMER =======================================
 # Ref: AdaptFormer-main/models/adapter.py — Adapter class
 # Ref: AdaptFormer-main/models/custom_modules.py — Block with parallel adapter
@@ -570,7 +559,6 @@ class Adapter(nn.Module):
         if add_residual:
             return up + residual
         return up
-
 
 def apply_adaptformer(model, num_classes, config):
     """Apply AdaptFormer: parallel adapter in each FFN block.
@@ -680,7 +668,6 @@ def apply_adaptformer(model, num_classes, config):
         model.classifier,
     )
     return model
-
 
 # ======================= CFT ===============================================
 def apply_cft(model, num_classes, config, selected_nodes=None, nodes_map=None, task_name=""):
@@ -793,7 +780,6 @@ def apply_cft(model, num_classes, config, selected_nodes=None, nodes_map=None, t
 
     return model
 
-
 # ======================= UNIFIED BUILD =====================================
 def build_model(method, num_classes, config, selected_nodes=None, nodes_map=None, task_name=""):
     """Factory: load pretrained SwinV2 and apply specified PEFT method."""
@@ -829,6 +815,5 @@ def build_model(method, num_classes, config, selected_nodes=None, nodes_map=None
     else:
         print(f"  [{method}] Trainable: {trainable:,} / {total:,} ({100*trainable/total:.2f}%)")
     return model
-
 
 # Quick sanity check

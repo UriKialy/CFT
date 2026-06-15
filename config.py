@@ -99,7 +99,6 @@ TASK_SHORT_NAMES = {
     "smallnorb_azi": "SNAzi", "smallnorb_ele": "SNEle",
 }
 
-
 # =============================================================================
 # Device & seed setup
 # =============================================================================
@@ -122,16 +121,14 @@ def setup_environment(config=None):
     os.makedirs(config["save_dir"], exist_ok=True)
     return device
 
-
 # =============================================================================
 # =============================================================================
 # SWIN BACKBONE CONFIG
-# Copied verbatim from Swin_vtab1k_CFT.ipynb cell 5 (CONFIG + best per-task HPs).
+# Copied
 # Prefix all symbols with SWIN_ to avoid colliding with ViT config above.
 # =============================================================================
 # =============================================================================
 # =============================================================================
-# CELL 2: Configuration
 # =============================================================================
 SWIN_CONFIG = {
     # ── Model ──
@@ -153,7 +150,6 @@ SWIN_CONFIG = {
     "optimizer":        "adamw",
     "scheduler":        "cosine",
     "num_workers":      4,
-
 
     # ── CFT (Circuit Fine-Tune) ──
     "cft_discovery_pct":  20,     # % of train data for circuit discovery
@@ -251,12 +247,10 @@ SWIN_CFT_DROPOUT = {
     "smallnorb_ele":  0.2,     
 }
 
-
-
 # =============================================================================
 # =============================================================================
 # GEMMA BACKBONE CONFIG
-# Copied verbatim from CFT_Gemma3_4B_IT_CUB200.ipynb cell 3.
+# Copied
 # All Gemma symbols are prefixed GEMMA_ to avoid colliding with ViT config.
 # =============================================================================
 # =============================================================================
@@ -273,7 +267,6 @@ GEMMA_TASK_DOMAIN_HINT = {
 GEMMA_STRUCTURED_TASK_CONFIG = {}
 
 # =============================================================================
-# CELL 2: Configuration
 # =============================================================================
 GEMMA_CONFIG = {
     # ── Model ──
@@ -308,14 +301,11 @@ GEMMA_CONFIG = {
     "seed":             42,
 }
 
-
 GEMMA_CFT_DROPOUT = {"cub200": 0.1}
 
 GEMMA_CFT_TASK_LRS = {"cub200": 5e-5}
 
 GEMMA_CFT_TASK_EPOCHS = {"cub200": 4}
-
-
 
 def get_backbone_config(backbone):
     """Return the CONFIG dict to use for this backbone.
@@ -330,7 +320,6 @@ def get_backbone_config(backbone):
     if backbone == "gemma":
         return dict(GEMMA_CONFIG)
     raise ValueError(f"Unknown backbone: {backbone!r}")
-
 
 def get_task_configs(backbone):
     """Return the per-task best-HP dict for this backbone.

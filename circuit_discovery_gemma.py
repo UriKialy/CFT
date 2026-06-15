@@ -1,6 +1,5 @@
 """
-Gemma circuit discovery (EAP-IG) — extracted verbatim from
-CFT_Gemma3_4B_IT_CUB200.ipynb cell 13.
+Gemma circuit discovery (EAP-IG)
 
 Requires the helpers from gemma_utils.py (prompt building, answer matching)
 to be in scope when discover_circuits_eap_ig is called.
@@ -69,7 +68,6 @@ def get_gemma_nodes(model):
     print(f"  ✓ {len(nodes)} nodes ({total_heads} heads + {total_mlps} MLPs) across {num_layers} layers")
     return nodes
 
-
 def build_cf_pairs(dataset, task_name, most_confused_map):
     """Build clean/counterfactual pairs using most-confused class mapping."""
     samples_by_class = dataset.get_samples_by_class()
@@ -93,7 +91,6 @@ def build_cf_pairs(dataset, task_name, most_confused_map):
 
     return pairs
 
-
 def prepare_vlm_input(image, task_name):
     """Prepare processor input for a single image with Strategy 3 prompt."""
     question = build_prompt_strategy3(task_name)
@@ -104,13 +101,11 @@ def prepare_vlm_input(image, task_name):
     )
     return {k: v.to(model.device) for k, v in inputs.items()}
 
-
 def get_target_token_id(task_name, label_idx):
     """Get the token ID for the first token of the expected answer."""
     answer_text = get_answer_token(task_name, label_idx)
     token_ids = processor.tokenizer.encode(answer_text, add_special_tokens=False)
     return token_ids[0] if token_ids else None
-
 
 def discover_circuits_eap_ig(model, train_dataset, task_name, config, most_confused_map):
     """
@@ -315,7 +310,6 @@ def discover_circuits_eap_ig(model, train_dataset, task_name, config, most_confu
         "node_scores_raw": node_scores,
         "nodes_map": nodes_map,
     }
-
 
 def select_nodes_by_param_budget(sorted_nodes, nodes_map, total_params, budget_pct):
     """Pick top nodes until cumulative params reach budget_pct of total_params.

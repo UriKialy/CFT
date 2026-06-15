@@ -1,5 +1,5 @@
 """
-Gemma PEFT methods — extracted verbatim from CFT_Gemma3_4B_IT_CUB200
+Gemma PEFT methods
 """
 from collections import defaultdict
 import torch
@@ -12,8 +12,6 @@ import torch.nn as nn
 def freeze_all(model):
     for param in model.parameters():
         param.requires_grad = False
-
-
 
 def apply_cft(model, selected_nodes, nodes_map):
     """Freeze everything, unfreeze only discovered circuit nodes."""

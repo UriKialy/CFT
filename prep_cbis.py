@@ -15,7 +15,6 @@ import pandas as pd
 from PIL import Image
 from tqdm import tqdm
 
-
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("--src", required=True,
@@ -87,7 +86,6 @@ def main():
     (out / "test.txt").write_text("\n".join(test_lines) + "\n")
     print(f"[prep] train={len(train_lines)} test={len(test_lines)} skipped={n_skip}")
     print(f"[prep] DONE -> {out}")
-
 
 if __name__ == "__main__":
     main()

@@ -13,7 +13,6 @@ import torch.nn.functional as F
 from transformers import ViTForImageClassification
 from transformers.modeling_outputs import BaseModelOutput
 
-
 # =============================================================================
 # Helpers
 # =============================================================================
@@ -23,15 +22,11 @@ def freeze_backbone(model):
         if "classifier" not in name:
             param.requires_grad = False
 
-
 def count_trainable_params(model):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
-
 def count_total_params(model):
     return sum(p.numel() for p in model.parameters())
-
-
 
 # =============================================================================
 # CFT — Circuit Fine-Tuning
@@ -156,7 +151,6 @@ def apply_cft(model, num_classes, config, selected_nodes=None, nodes_map=None):
 
     return model
 
-
 # =============================================================================
 # Unified model builder
 # =============================================================================
@@ -171,9 +165,7 @@ def build_model(method, num_classes, config, device=None,
     if head_drop > 0:
         model.classifier = nn.Sequential(nn.Dropout(head_drop), model.classifier)
 
-
     model = apply_cft(model, num_classes, config, selected_nodes, nodes_map)
-
 
     if device is not None:
         model = model.to(device)

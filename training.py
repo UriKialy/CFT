@@ -2,7 +2,6 @@
 VTAB-1K Fine-Tuning Benchmark — Training, evaluation, and measurement utilities
 """
 import math
-import time
 
 import torch
 import torch.nn as nn
@@ -13,7 +12,6 @@ import torch.distributed as dist
 from dataset import GPUCachedDataset
 from Utils import count_trainable_params, count_total_params
 
-
 # =============================================================================
 # Training & Evaluation
 # =============================================================================
@@ -23,7 +21,7 @@ def train_and_evaluate(model, train_ds, test_ds, config, method_name="",
                        use_ddp=False, rank=0, world_size=1,
                        stop_after_epoch=None):
     """Train model and evaluate on test set.
-    Returns: dict with accuracy, training_time, inference_time, peak_memory, etc.
+    Returns: dict with accuracy, best_epoch, test_history
     """
     if device is None:
         device = next(model.parameters()).device
@@ -138,14 +136,8 @@ def train_and_evaluate(model, train_ds, test_ds, config, method_name="",
         ls_val = 0.0
     criterion = nn.CrossEntropyLoss(label_smoothing=ls_val)
 
-    # -- Reset peak memory counter --
-    if torch.cuda.is_available():
-        torch.cuda.reset_peak_memory_stats()
-        torch.cuda.synchronize()
-
     # -- Training --
     model.train()
-    t_start = time.time()
     patience_counter = 0
     best_test_acc = -1
     best_epoch = 0
@@ -232,81 +224,26 @@ def train_and_evaluate(model, train_ds, test_ds, config, method_name="",
                 print(f"  STOP (reached epoch cap {stop_after_epoch}/{epochs})")
             break
 
-    train_time = time.time() - t_start
-
-    # -- Final evaluation --
-    model.eval()
-    if torch.cuda.is_available():
-        torch.cuda.synchronize()
-    t_infer_start = time.time()
-
-    with torch.no_grad():
-        for images, labels in test_loader:
-            if not is_cached:
-                images, labels = images.to(device), labels.to(device)
-            model(pixel_values=images)
-
-    if torch.cuda.is_available():
-        torch.cuda.synchronize()
-    infer_time = time.time() - t_infer_start
-
-    peak_mem_mb = 0
-    if torch.cuda.is_available():
-        peak_mem_mb = torch.cuda.max_memory_allocated() / (1024 ** 2)
-
-    if use_ddp and world_size > 1:
-        peak_mem = torch.tensor([peak_mem_mb], dtype=torch.float64, device=device)
-        dist.all_reduce(peak_mem, op=dist.ReduceOp.MAX)
-        peak_mem_mb = float(peak_mem.item())
-
     if rank == 0:
-        print(f"    Best: {best_test_acc:.1f}% @ep{best_epoch} | Train: {train_time:.1f}s | "
-              f"Infer: {infer_time:.2f}s | PeakMem: {peak_mem_mb:.0f}MB")
+        print(f"    ✓ Best: {best_test_acc:.1f}% @ep{best_epoch}")
 
     return {
-        "accuracy": best_test_acc,
-        "best_epoch": best_epoch,
-        "train_time": train_time,
-        "infer_time": infer_time,
-        "peak_memory_mb": peak_mem_mb,
+        "accuracy":     best_test_acc,
+        "best_epoch":   best_epoch,
         "test_history": test_history,
     }
 
-
 # =============================================================================
-# Measurement Utilities
+# Lightweight model stats (params only — no FLOPs / wall-clock / memory)
 # =============================================================================
-def measure_flops(model, image_size=224, device=None):
-    """Measure FLOPs for a single forward pass using fvcore."""
-    if device is None:
-        device = next(model.parameters()).device
-    try:
-        from fvcore.nn import FlopCountAnalysis
-        dummy = torch.randn(1, 3, image_size, image_size).to(device)
-        model.eval()
-        flops = FlopCountAnalysis(model, (dummy,))
-        total_flops = flops.total()
-        return total_flops
-    except Exception as e:
-        print(f"  FLOPs measurement failed: {e}")
-        return -1
-
-
-def measure_model_stats(model, config, method_name):
-    """Compute all non-accuracy metrics for a model."""
+def measure_model_stats(model, config=None, method_name="cft"):
+    """Trainable / total parameter counts only."""
     trainable = count_trainable_params(model)
     total = count_total_params(model)
-    flops = measure_flops(model, config["image_size"])
-
-    stats = {
+    pct = 100.0 * trainable / total if total > 0 else 0.0
+    print(f"  [{method_name}] Trainable: {trainable:,} / {total:,} ({pct:.2f}%)")
+    return {
         "trainable_params": trainable,
-        "total_params": total,
-        "trainable_pct": 100.0 * trainable / total if total > 0 else 0,
-        "flops": flops,
+        "total_params":     total,
+        "trainable_pct":    pct,
     }
-    if flops > 0:
-        print(f"  [{method_name}] Trainable: {trainable:,} ({stats['trainable_pct']:.2f}%) | "
-              f"FLOPs: {flops/1e9:.2f}G")
-    else:
-        print(f"  [{method_name}] Trainable: {trainable:,} ({stats['trainable_pct']:.2f}%)")
-    return stats

@@ -1,6 +1,5 @@
 """
-Swin circuit discovery (EAP-IG and EAP) — extracted verbatim from
-Swin_vtab1k_CFT.ipynb cells 8 and 9.
+Swin circuit discovery (EAP-IG and EAP)
 """
 import numpy as np
 import torch
@@ -8,7 +7,6 @@ import torch.nn.functional as F
 from tqdm.auto import tqdm
 
 # =============================================================================
-# CELL 6: CFT — Corruption, EAP-IG Circuit Discovery, Node Selection
 # =============================================================================
 # Logic adapted from user's DINOv2 implementation for HuggingFace ViT.
 # EAP-IG: Edge Attribution Patching with Integrated Gradients (Marks et al.)
@@ -38,7 +36,6 @@ def create_patch_shuffled_image(image_tensor, patch_size=16):
     shuffled = shuffled.permute(0, 3, 1, 4, 2, 5).contiguous()
     return shuffled.view(B, C, H, W)
 
-
 def create_gaussian_noise_image(image_tensor, **kwargs):
     """Corrupt images with Gaussian noise matching per-image statistics.
     Destroys all structure (spatial + texture/color).
@@ -46,7 +43,6 @@ def create_gaussian_noise_image(image_tensor, **kwargs):
     mean = image_tensor.mean(dim=(2, 3), keepdim=True)
     std = image_tensor.std(dim=(2, 3), keepdim=True).clamp(min=1e-6)
     return mean + std * torch.randn_like(image_tensor)
-
 
 def create_channel_shuffled_image(image_tensor, patch_size=16):
     """Corrupt images by shuffling channels within each patch.
@@ -160,7 +156,6 @@ def get_swinv2_nodes(model):
     print(f"  ✓ {len(nodes)} nodes ({total_heads} heads + {total_mlps} MLPs) "
           f"across {len(depths)} stages, {n_blocks} blocks")
     return nodes
-
 
 # ── EAP-IG Circuit Discovery ──────────────────────────────────────────────
 def discover_circuits_eap_ig(model, dataset, config):
@@ -377,8 +372,6 @@ def discover_circuits_eap_ig(model, dataset, config):
         "method": "EAP-IG",
     }
 
-
-
 def select_nodes_by_param_budget(sorted_nodes, nodes_map, total_params, target_pct,task_name=""):
     """Pick top nodes until cumulative params reach target_pct of total_params.
     Strategy: first pick the best head from each layer, then fill remaining budget with top nodes.
@@ -407,7 +400,6 @@ def select_nodes_by_param_budget(sorted_nodes, nodes_map, total_params, target_p
             continue  # skip this block's head if it doesn't fit, try next
         selected.add(name)
         used += pc
-
 
     # --- Phase 2: Fill remaining budget with top-scoring nodes (heads or MLPs) ---
     # If a node doesn't fit, skip it and try smaller ones

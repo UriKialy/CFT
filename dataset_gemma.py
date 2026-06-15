@@ -1,5 +1,5 @@
 """
-Gemma dataset loaders — extracted verbatim from CFT_Gemma3_4B_IT_CUB200.ipynb cell 5.
+Gemma dataset loaders
 
 Used only for Gemma backbone (CUB-200 via PIL access for the VLM processor).
 """
@@ -13,7 +13,6 @@ import pandas as pd
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
 from PIL import Image
-
 
 class _PathLabelDataset(Dataset):
     """Generic dataset from list of (path, label) tuples."""
@@ -30,7 +29,6 @@ class _PathLabelDataset(Dataset):
         img = Image.open(path).convert("RGB")
         tensor = self.transform(img) if self.transform else img
         return tensor, label, path
-
 
 class GPUCachedDataset(Dataset):
     """Pre-load all images as tensors on GPU for fast training."""
@@ -75,14 +73,12 @@ class GPUCachedDataset(Dataset):
     def get_label(self, idx):
         return self.labels[idx].item()
 
-
 def get_transforms(image_size):
     return transforms.Compose([
         transforms.Resize((image_size, image_size), interpolation=transforms.InterpolationMode.BICUBIC),
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
     ])
-
 
 def _load_cub200(data_dir, config):
     cub_root = os.path.join(data_dir, "cub200", "CUB_200_2011")
@@ -109,7 +105,6 @@ def _load_cub200(data_dir, config):
     test_ds  = _PathLabelDataset(test_samples, tfm, num_classes)
     return train_ds, test_ds, num_classes
 
-
 def load_vtab_task(task_name, config):
     """Load train and test datasets for a task."""
     train_ds, test_ds, num_classes = _load_cub200(config["data_dir"], config)
@@ -121,9 +116,6 @@ def load_vtab_task(task_name, config):
         test_ds  = GPUCachedDataset(test_ds, device)
 
     return train_ds, test_ds, num_classes
-
-
-
 
 # =============================================================================
 # CUB-200 class names loader (extracted from gemma_cell_3.py lines 9-17)

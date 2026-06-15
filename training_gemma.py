@@ -1,6 +1,5 @@
 """
-Gemma generative training loop — extracted verbatim from
-CFT_Gemma3_4B_IT_CUB200.ipynb cell 15.
+Gemma generative training loop
 
 Requires gemma_utils helpers (build_prompt_strategy3, classify_image,
 match_answer_to_class, get_answer_token, get_class_names, evaluate_zero_shot)
@@ -140,7 +139,6 @@ def train_generative(model, train_dataset, test_dataset, task_name, config, meth
     print(f"    Best acc: {best_acc:.1f}%")
     return model, best_acc
 
-
 @torch.no_grad()
 def extract_features(model, dataset, task_name):
     """Extract last hidden state features from frozen Gemma for linear probe."""
@@ -165,11 +163,9 @@ def extract_features(model, dataset, task_name):
     labels = torch.tensor(labels, dtype=torch.long)
     return features, labels
 
-
 @torch.no_grad()
 def evaluate_generative(model, test_dataset, task_name):
     """Evaluate fine-tuned model with Strategy 3 generative inference."""
     return evaluate_zero_shot(test_dataset, task_name, return_confusion=False)
-
 
 print("✅ Training functions defined.")

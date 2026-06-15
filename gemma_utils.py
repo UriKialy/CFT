@@ -1,5 +1,5 @@
 """
-Gemma VLM utilities — extracted verbatim from CFT_Gemma3_4B_IT_CUB200.ipynb
+Gemma VLM utilities
 cells 8 and 9 (prompt builders, answer matching, zero-shot eval, confused-class).
 """
 import re
@@ -11,7 +11,6 @@ from tqdm.auto import tqdm
 
 def is_structured(task_name):
     return task_name in STRUCTURED_TASK_CONFIG
-
 
 # =============================================================================
 # 2. PROMPT BUILDERS — 3 strategies
@@ -27,12 +26,10 @@ def build_prompt_strategy3(task_name):
     opts = ", ".join(classes)
     return f"Classify this image into one of: [{opts}]. Answer with the class name only."
 
-
 # ── The actual VLM question prompts (what we send with each image) ──
 
 def get_question_for_image(task_name, strategy):
         return build_prompt_strategy3(task_name)
-
 
 # =============================================================================
 # 3. ANSWER MATCHING — fuzzy match VLM output to class name
@@ -89,7 +86,6 @@ def match_answer_to_class(answer, class_names):
 
     return -1  # no match
 
-
 def get_class_names(task_name):
     if is_structured(task_name):
         return STRUCTURED_TASK_CONFIG[task_name]["class_names"]
@@ -119,7 +115,6 @@ def classify_image(image, question):
     output_ids = model.generate(**inputs, max_new_tokens=CONFIG["max_new_tokens"], do_sample=False)
     new_tokens = output_ids[0, inputs["input_ids"].shape[1]:]
     return processor.decode(new_tokens, skip_special_tokens=True).strip()
-
 
 def match_answer_to_class(answer, class_names):
     """Fuzzy match VLM output to closest class name."""
@@ -154,7 +149,6 @@ def match_answer_to_class(answer, class_names):
             if cn.strip() == n:
                 return i
     return -1
-
 
 @torch.no_grad()
 def evaluate_zero_shot(dataset, task_name, return_confusion=False, batch_size=8):
@@ -213,7 +207,6 @@ def evaluate_zero_shot(dataset, task_name, return_confusion=False, batch_size=8)
         return acc, confusion
 
     return acc
-
 
 def get_most_confused_class(confusion, num_classes):
     """For each class, find which OTHER class the model most often predicts.
