@@ -31,13 +31,13 @@ CONFIG = {
     "num_workers":      4,
 
     # -- CFT (Circuit Fine-Tune) --
-    "cft_discovery_pct":  15,     # % of train data for circuit discovery
-    "cft_param_budget":   20,     # % of total backbone params to unfreeze
-    "cft_ig_steps":       12,     # Integrated gradient steps
+    "cft_discovery_pct":  10,     # % of train data for circuit discovery
+    "cft_param_budget":   15,     # % of total backbone params to unfreeze
+    "cft_ig_steps":       8,     # Integrated gradient steps
     "cft_batch_size":     32,     # Batch size for EAP-IG
     # -- Output --
     "save_dir":         os.path.join(os.path.dirname(__file__), "results"),
-    "seed":             42,
+    "seed":             227,
 }
 
 # -- Per-task configs for CFT (tune per task as needed) --
@@ -124,7 +124,6 @@ def setup_environment(config=None):
 # =============================================================================
 # =============================================================================
 # SWIN BACKBONE CONFIG
-# Copied
 # Prefix all symbols with SWIN_ to avoid colliding with ViT config above.
 # =============================================================================
 # =============================================================================

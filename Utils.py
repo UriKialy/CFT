@@ -1,5 +1,5 @@
 """
-VTAB-1K Fine-Tuning Benchmark — PEFT method implementations on HuggingFace ViT
+utils
 """
 import math
 from collections import defaultdict

@@ -1,5 +1,5 @@
 """
-VTAB-1K Fine-Tuning Benchmark — Training, evaluation, and measurement utilities
+Training, evaluation, and measurement utilities
 """
 import math
 
@@ -60,76 +60,32 @@ def train_and_evaluate(model, train_ds, test_ds, config, method_name="",
 
     # -- Per-method optimizer config (matching original papers) --
     lr_scale = batch_size / 256
-    use_smoothing = False
+    use_smoothing = True
 
-    if method_name == "full_finetune":
+
+    if cft_task_configs is None:
+        cft_task_configs = {}
+    task_cfg = cft_task_configs.get(task_name, {"lr": config["learning_rate"], "wd": config["weight_decay"]})
+    trainable_params = [p for p in model.parameters() if p.requires_grad]
+    base_model = model.module if hasattr(model, "module") else model
+    masked_params = getattr(base_model, "_cft_no_weight_decay_params", None)
+    if method_name == "cft" and masked_params:
+        masked_ids = {id(p) for p in masked_params if p.requires_grad}
+        decay_params = [p for p in trainable_params if id(p) not in masked_ids]
+        no_decay_params = [p for p in trainable_params if id(p) in masked_ids]
+        optimizer_groups = []
+        if decay_params:
+            optimizer_groups.append({"params": decay_params, "weight_decay": task_cfg["wd"]})
+        if no_decay_params:
+            optimizer_groups.append({"params": no_decay_params, "weight_decay": 0.0})
+        optimizer = torch.optim.AdamW(optimizer_groups, lr=task_cfg["lr"])
+    else:
         optimizer = torch.optim.AdamW(
-            [p for p in model.parameters() if p.requires_grad],
-            lr=0.001, weight_decay=0.0001)
-        warmup_epochs = 0
-
-    elif method_name == "linear_probe":
-        optimizer = torch.optim.SGD(
-            [p for p in model.parameters() if p.requires_grad],
-            lr=5.0 * lr_scale, momentum=0.9, weight_decay=0.0001)
-        warmup_epochs = 0
-
-    elif method_name == "vpt_deep":
-        optimizer = torch.optim.SGD(
-            [p for p in model.parameters() if p.requires_grad],
-            lr=1.0 * lr_scale, momentum=0.9, weight_decay=0.0001)
-        warmup_epochs = 10
-
-    elif method_name == "adaptformer":
-        optimizer = torch.optim.SGD(
-            [p for p in model.parameters() if p.requires_grad],
-            lr=0.1 * lr_scale, momentum=0.9, weight_decay=0.0)
-        warmup_epochs = 20
-
-    elif method_name == "ssf":
-        if ssf_task_configs is None:
-            ssf_task_configs = {}
-        task_cfg = ssf_task_configs.get(task_name, {"lr": 5e-3, "wd": 5e-5})
-        optimizer = torch.optim.AdamW(
-            [p for p in model.parameters() if p.requires_grad],
+            trainable_params,
             lr=task_cfg["lr"], weight_decay=task_cfg["wd"])
-        warmup_epochs = 10
 
-    else:  # cft or default
-        if cft_task_configs is None:
-            cft_task_configs = {}
-        task_cfg = cft_task_configs.get(task_name, {"lr": config["learning_rate"], "wd": config["weight_decay"]})
-        trainable_params = [p for p in model.parameters() if p.requires_grad]
-        base_model = model.module if hasattr(model, "module") else model
-        masked_params = getattr(base_model, "_cft_no_weight_decay_params", None)
-        if method_name == "cft" and masked_params:
-            masked_ids = {id(p) for p in masked_params if p.requires_grad}
-            decay_params = [p for p in trainable_params if id(p) not in masked_ids]
-            no_decay_params = [p for p in trainable_params if id(p) in masked_ids]
-            optimizer_groups = []
-            if decay_params:
-                optimizer_groups.append({"params": decay_params, "weight_decay": task_cfg["wd"]})
-            if no_decay_params:
-                optimizer_groups.append({"params": no_decay_params, "weight_decay": 0.0})
-            optimizer = torch.optim.AdamW(optimizer_groups, lr=task_cfg["lr"])
-        else:
-            optimizer = torch.optim.AdamW(
-                trainable_params,
-                lr=task_cfg["lr"], weight_decay=task_cfg["wd"])
-        warmup_epochs = 10
-        use_smoothing = True
 
-    # -- Linear warmup + cosine decay --
-    total_steps = epochs * len(train_loader)
-    warmup_steps = warmup_epochs * len(train_loader)
-
-    def lr_lambda(step):
-        if step < warmup_steps:
-            return (step + 1) / warmup_steps
-        progress = (step - warmup_steps) / max(1, total_steps - warmup_steps)
-        return 0.5 * (1 + math.cos(math.pi * progress))
-
-    scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs * len(train_loader))
     if use_smoothing:
         ls_val = float(task_cfg.get("label_smoothing", 0.1))
     else:
@@ -208,12 +164,6 @@ def train_and_evaluate(model, train_ds, test_ds, config, method_name="",
                 best_test_acc = test_acc
                 best_epoch = epoch
                 patience_counter = 0
-            # else:
-            #     patience_counter += 1
-            #     if patience_counter >= 5:
-            #         if rank == 0:
-            #             print(f"  STOP (best={best_test_acc:.1f}% @ep{best_epoch})")
-            #         break
             model.train()
 
         if rank == 0:
@@ -234,7 +184,7 @@ def train_and_evaluate(model, train_ds, test_ds, config, method_name="",
     }
 
 # =============================================================================
-# Lightweight model stats (params only — no FLOPs / wall-clock / memory)
+# Lightweight model stats (params only)
 # =============================================================================
 def measure_model_stats(model, config=None, method_name="cft"):
     """Trainable / total parameter counts only."""

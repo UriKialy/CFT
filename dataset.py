@@ -1,5 +1,5 @@
 """
-VTAB-1K Fine-Tuning Benchmark — Dataset loading and GPU caching
+Dataset loading and GPU caching
 """
 import os
 import torch

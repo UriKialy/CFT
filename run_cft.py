@@ -1,13 +1,6 @@
 #!/usr/bin/env python3
 """
-Run CFT (Circuit Fine-Tuning) on VTAB-1K tasks.
-
-Usage:
-    python run_cft.py                          # all 19 tasks
-    python run_cft.py --tasks cifar dtd        # specific tasks
-    python run_cft.py --epochs 40              # override epochs
-    python run_cft.py --epochs 100 --stop-after-epoch 50
-    python run_cft.py --budget 20              # param budget %
+Run CFT (Circuit Fine-Tuning).
 """
 import argparse
 import gc

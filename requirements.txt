@@ -1,7 +1,7 @@
 # Core deps for CFT runs
 torch>=2.1
 torchvision>=0.16
-transformers>=4.45
+transformers>=4.45,<5
 huggingface_hub>=0.20
 numpy
 pandas

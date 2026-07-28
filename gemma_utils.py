@@ -1,6 +1,5 @@
 """
 Gemma VLM utilities
-cells 8 and 9 (prompt builders, answer matching, zero-shot eval, confused-class).
 """
 import re
 from collections import defaultdict, Counter
@@ -26,23 +25,10 @@ def build_prompt_strategy3(task_name):
     opts = ", ".join(classes)
     return f"Classify this image into one of: [{opts}]. Answer with the class name only."
 
-# ── The actual VLM question prompts (what we send with each image) ──
-
-def get_question_for_image(task_name, strategy):
-        return build_prompt_strategy3(task_name)
 
 # =============================================================================
 # 3. ANSWER MATCHING — fuzzy match VLM output to class name
 # =============================================================================
-def extract_tagged_answer(raw_answer):
-    """Extract answer from [CLASSIFICATION_START]...[CLASSIFICATION_END] tags."""
-    match = re.search(
-        r'\[CLASSIFICATION_START\](.*?)\[CLASSIFICATION_END\]',
-        raw_answer, re.IGNORECASE | re.DOTALL
-    )
-    if match:
-        return match.group(1).strip()
-    return raw_answer.strip()  # fallback: use full answer if no tags found
 
 def match_answer_to_class(answer, class_names):
     """Match VLM free-text answer to closest class name."""
@@ -116,39 +102,7 @@ def classify_image(image, question):
     new_tokens = output_ids[0, inputs["input_ids"].shape[1]:]
     return processor.decode(new_tokens, skip_special_tokens=True).strip()
 
-def match_answer_to_class(answer, class_names):
-    """Fuzzy match VLM output to closest class name."""
-    answer_lower = answer.strip().lower()
 
-    # Exact
-    for i, cn in enumerate(class_names):
-        if cn.lower() == answer_lower:
-            return i
-    # Class in answer (longest first)
-    for i, cn in sorted(enumerate(class_names), key=lambda x: -len(x[1])):
-        if cn.lower() in answer_lower:
-            return i
-    # Answer in class
-    for i, cn in enumerate(class_names):
-        if answer_lower in cn.lower():
-            return i
-    # Word overlap
-    answer_words = set(answer_lower.split())
-    best_i, best_score = 0, 0
-    for i, cn in enumerate(class_names):
-        overlap = len(answer_words & set(cn.lower().split()))
-        if overlap > best_score:
-            best_score = overlap
-            best_i = i
-    if best_score > 0:
-        return best_i
-    # Numeric fallback
-    nums = re.findall(r'\d+', answer_lower)
-    for n in nums:
-        for i, cn in enumerate(class_names):
-            if cn.strip() == n:
-                return i
-    return -1
 
 @torch.no_grad()
 def evaluate_zero_shot(dataset, task_name, return_confusion=False, batch_size=8):
