@@ -17,42 +17,6 @@ VTAB_DIR="$DATA_ROOT/vtab-1k"
 
 echo "VTAB-1K setup — target: $VTAB_DIR"
 
-# -- Option 1: From the SSF repo (most common source) --
-# The SSF paper repo hosts VTAB-1K splits ready to use.
-# Clone it and copy the dataset:
-if [ ! -d "$VTAB_DIR" ]; then
-    echo ""
-    echo "Downloading VTAB-1K from the SSF repo..."
-    echo ""
-
-    TMP_DIR=$(mktemp -d)
-    git clone --depth 1 https://github.com/dongzelian/SSF.git "$TMP_DIR/SSF"
-
-    if [ -d "$TMP_DIR/SSF/datasets/vtab-1k" ]; then
-        mkdir -p "$DATA_ROOT"
-        cp -r "$TMP_DIR/SSF/datasets/vtab-1k" "$VTAB_DIR"
-        echo "Copied dataset to $VTAB_DIR"
-    else
-        echo "ERROR: vtab-1k not found in SSF repo."
-        echo ""
-        echo "The SSF repo may use Git LFS for the dataset."
-        echo "Try manually:"
-        echo "  1. git lfs install"
-        echo "  2. git clone https://github.com/dongzelian/SSF.git"
-        echo "  3. cp -r SSF/datasets/vtab-1k $VTAB_DIR"
-        echo ""
-        echo "Alternative: download from Google Drive / OneDrive if you"
-        echo "have a vtab-1k.tar file, then extract it:"
-        echo "  mkdir -p $VTAB_DIR && tar xf vtab-1k.tar -C $DATA_ROOT"
-        rm -rf "$TMP_DIR"
-        exit 1
-    fi
-
-    rm -rf "$TMP_DIR"
-else
-    echo "Already exists: $VTAB_DIR"
-fi
-
 # -- Verify --
 echo ""
 echo "Checking tasks..."
