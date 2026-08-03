@@ -106,9 +106,17 @@ def apply_cft(model, num_classes, config, selected_nodes=None, nodes_map=None, t
         for param in block.output.dense.parameters():
             param.requires_grad = True
 
-    # ── Unfreeze all LayerNorm params (~0.045% of backbone) ──
+    # ── Always-on small params (~0.32% of Swinv2-B backbone) ──
+    # LayerNorms, patch-embed bias, logit_scale, continuous_position_bias_mlp.
+    # Standard in BitFit/SSF/SPT recipes; cheap and boost VTAB-1K acc.
     for name, param in model.named_parameters():
         if "layernorm" in name.lower() or "layer_norm" in name.lower():
+            param.requires_grad = True
+        elif name.endswith("patch_embeddings.projection.bias"):
+            param.requires_grad = True
+        elif name.endswith(".logit_scale"):
+            param.requires_grad = True
+        elif "continuous_position_bias_mlp" in name:
             param.requires_grad = True
 
     # ── Dropout for unfrozen layers ──
