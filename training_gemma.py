@@ -1,9 +1,6 @@
 """
 Gemma generative training loop
-
-Requires gemma_utils helpers (build_prompt_strategy3, classify_image,
-match_answer_to_class, get_answer_token, get_class_names, evaluate_zero_shot)
-to be in scope when train_generative is called.
+Requires gemma_utils helpers 
 """
 import numpy as np
 import torch
@@ -11,7 +8,7 @@ from torch.optim.lr_scheduler import CosineAnnealingLR
 from tqdm.auto import tqdm
 
 # =============================================================================
-# TRAINING: Generative fine-tuning (Full FT, CFT) + Linear Probe
+# TRAINING: Generative fine-tuning 
 # =============================================================================
 
 def train_generative(model, train_dataset, test_dataset, task_name, config, method_name, num_epochs, lr):
@@ -165,7 +162,6 @@ def extract_features(model, dataset, task_name):
 
 @torch.no_grad()
 def evaluate_generative(model, test_dataset, task_name):
-    """Evaluate fine-tuned model with Strategy 3 generative inference."""
     return evaluate_zero_shot(test_dataset, task_name, return_confusion=False)
 
 print("✅ Training functions defined.")
