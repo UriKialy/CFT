@@ -59,7 +59,7 @@ def train_and_evaluate(model, train_ds, test_ds, config,
                               num_workers=0 if train_is_cached else 4,
                               pin_memory=not train_is_cached)
 
-    # Optimizer: split CFT-masked params (no weight decay) from the rest
+    # split CFT-masked params (no weight decay) from the rest
     trainable_params = [p for p in model.parameters() if p.requires_grad]
     base_model = model._orig_mod if hasattr(model, '_orig_mod') else model
     masked_params = getattr(base_model, "_cft_no_weight_decay_params", None)
@@ -104,7 +104,6 @@ def train_and_evaluate(model, train_ds, test_ds, config,
     t_start = time.time()
     best_test_acc = -1.0
     best_epoch = 0
-    test_history = {}
 
     for epoch in range(1, run_epochs + 1):
         if train_sampler is not None:
@@ -147,7 +146,6 @@ def train_and_evaluate(model, train_ds, test_ds, config,
             dist.all_reduce(test_totals, op=dist.ReduceOp.SUM)
             tc, tt = test_totals.tolist()
         test_acc = 100.0 * tc / max(tt, 1.0)
-        test_history[epoch] = test_acc
         if test_acc > best_test_acc:
             best_test_acc = test_acc
             best_epoch = epoch
@@ -197,5 +195,4 @@ def train_and_evaluate(model, train_ds, test_ds, config,
         "final_accuracy": final_test_acc,
         "best_epoch":     best_epoch,
         "epochs_run":     run_epochs,
-        "test_history":   test_history,
     }
