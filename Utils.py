@@ -40,7 +40,6 @@ def apply_cft(model, num_classes, config, selected_nodes=None, nodes_map=None):
     for param in model.classifier.parameters():
         param.requires_grad = True
 
-    # Always-on: patch+pos embeddings + all LayerNorms (~0.9% of ViT-B).
     for param in model.vit.embeddings.parameters():
         param.requires_grad = True
     for layer in model.vit.encoder.layer:
@@ -156,7 +155,6 @@ def apply_cft(model, num_classes, config, selected_nodes=None, nodes_map=None):
 # =============================================================================
 def build_model(method, num_classes, config, device=None,
                 selected_nodes=None, nodes_map=None):
-    """Factory: load pretrained ViT and apply specified PEFT method."""
     model = ViTForImageClassification.from_pretrained(config["model_name"])
     model.classifier = nn.Linear(model.config.hidden_size, num_classes)
     nn.init.normal_(model.classifier.weight, std=1e-5)
