@@ -247,10 +247,6 @@ def discover_circuits_eap_ig(model, train_dataset, task_name, config, most_confu
                 if not name.endswith('_grad') and tensor.requires_grad:
                     grad_handles.append(tensor.register_hook(make_grad_hook(name)))
 
-            # # Logit difference: logit(clean_answer) - logit(cf_answer)
-            # last_logits = out.logits[0, -1, :]  # logits at last position
-            # logit_diff = last_logits[clean_token_id] - last_logits[cf_token_id]
-            # logit_diff.backward()
 
             # Cross-entropy loss on the clean answer token
             last_logits = out.logits[0, -1, :].unsqueeze(0)  # (1, vocab_size)
