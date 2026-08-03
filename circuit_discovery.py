@@ -1,6 +1,4 @@
 """
-VTAB-1K Fine-Tuning Benchmark — CFT circuit discovery via EAP-IG
-
 Two variants:
   - discover_circuits_eap_ig: uses log-prob difference metric
   - discover_circuits_eap_ig_v1: uses GT logit metric with KL-style normalization
@@ -12,67 +10,6 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-# =============================================================================
-# Pre-train classifier head (linear probe) for meaningful discovery gradients
-# =============================================================================
-def pretrain_classifier(model, dataset, device, num_epochs=5, lr=1e-3, batch_size=256):
-    """Train only the classifier head before circuit discovery.
-
-    A randomly initialized classifier produces near-random gradients, making
-    EAP-IG attributions unreliable.  A brief linear-probe warmup gives the
-    head meaningful weights so that d(metric)/d(activation) points in
-    task-relevant directions.
-    """
-    print(f"  Pre-training classifier head ({num_epochs} epochs, lr={lr}) ...")
-
-    # Freeze backbone, train only classifier
-    for name, p in model.named_parameters():
-        p.requires_grad = "classifier" in name
-
-    model.train()
-    optimizer = torch.optim.Adam(
-        (p for p in model.parameters() if p.requires_grad), lr=lr,
-    )
-
-    n = len(dataset)
-    indices = list(range(n))
-
-    for epoch in range(num_epochs):
-        np.random.shuffle(indices)
-        total_loss, correct, total = 0.0, 0, 0
-
-        for start in range(0, n, batch_size):
-            batch_idx = indices[start : start + batch_size]
-            images, labels = [], []
-            for idx in batch_idx:
-                img, lab = dataset[idx]
-                if img.dim() == 3:
-                    img = img.unsqueeze(0)
-                images.append(img)
-                labels.append(lab if isinstance(lab, int) else lab.item())
-
-            imgs = torch.cat(images, dim=0).to(device)
-            labs = torch.tensor(labels, dtype=torch.long, device=device)
-
-            logits = model(pixel_values=imgs).logits
-            loss = F.cross_entropy(logits, labs)
-
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-
-            total_loss += loss.item() * len(labs)
-            correct += (logits.argmax(dim=-1) == labs).sum().item()
-            total += len(labs)
-
-        acc = 100.0 * correct / total
-        avg_loss = total_loss / total
-        print(f"    Epoch {epoch+1}/{num_epochs}: loss={avg_loss:.3f} acc={acc:.1f}%")
-
-    # Unfreeze all params (caller is responsible for model.eval())
-    for p in model.parameters():
-        p.requires_grad = True
-    print(f"  Classifier pre-training done.")
 
 # =============================================================================
 # Corruption methods
@@ -233,9 +170,7 @@ def discover_circuits_eap_ig(model, dataset, config, device=None, metric="log_pr
     metric: "log_prob_diff" (original) | "logit_diff" | "cross_entropy" (loss-based).
     corruption: "patch_shuffle" | "gaussian" | "channel_shuffle" | "multi"
         "multi" averages scores from all three corruption types.
-    score_norm: "param_count" (divide by param count) | "rank" (rank-based within type).
-    method: "eap-ig" (original EAP-IG with IG path) or
-            "eap" (single gradient at clean input, no IG path).
+    method: "eap-ig" (original EAP-IG with IG path)
     """
     if device is None:
         device = next(model.parameters()).device
