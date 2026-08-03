@@ -440,11 +440,9 @@ def run_gemma(tasks=None, config=None, **_unused):
         # Gemma uses CUB-200 (PIL access)
         train_ds, test_ds, num_classes = _load_cub200(config["data_dir"], config)
 
-        # 1) Zero-shot eval to build the confusion matrix → most-confused class map
-        print(f"[Gemma] Zero-shot eval on test set to build confusion matrix...")
-        zs_acc, confusion = GU.evaluate_zero_shot(test_ds, task_name, return_confusion=True)
-        most_confused = GU.get_most_confused_class(confusion, num_classes)
-        print(f"[Gemma] Zero-shot acc: {zs_acc:.1f}%")
+        # 1) Most-confused class map (hardcoded 5-class table + (c+1) fallback).
+        # ZS eval was ~random (0.6% on CUB-200), so we skip it.
+        most_confused = GU.get_most_confused_class(num_classes, task_name)
 
         # 2) Circuit discovery (EAP-IG) using clean/CF pairs from 
         circuit_info = DG.discover_circuits_eap_ig(model, train_ds, task_name,
@@ -464,7 +462,7 @@ def run_gemma(tasks=None, config=None, **_unused):
         epochs = config.get("num_epochs", 10)
         _, best_acc = TG.train_generative(model_cft, train_ds, test_ds, task_name,
                                           config, "cft", epochs, lr)
-        all_results[task_name] = {"zero_shot": zs_acc, "cft_acc": best_acc}
+        all_results[task_name] = {"cft_acc": best_acc}
         os.makedirs(config["save_dir"], exist_ok=True)
         with open(os.path.join(config["save_dir"], "gemma_cft_results.json"), "w") as f:
             json.dump(all_results, f, indent=2, default=str)

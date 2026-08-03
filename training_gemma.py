@@ -11,6 +11,22 @@ from tqdm.auto import tqdm
 # TRAINING: Generative fine-tuning 
 # =============================================================================
 
+@torch.no_grad()
+def _evaluate_accuracy(model, dataset, task_name):
+    """Top-1 accuracy (%) on `dataset` — classify each image, count correct."""
+    model.eval()
+    question    = build_prompt_strategy3(task_name)
+    class_names = get_class_names(task_name)
+    correct = 0
+    for idx in tqdm(range(len(dataset)), desc=f"  eval {task_name}", leave=False):
+        img = dataset.get_pil_image(idx)
+        lbl = dataset.get_label(idx)
+        answer = classify_image(img, question)
+        if match_answer_to_class(answer, class_names) == lbl:
+            correct += 1
+    return 100.0 * correct / max(len(dataset), 1)
+
+
 def train_generative(model, train_dataset, test_dataset, task_name, config, method_name, num_epochs, lr):
     model.train()
     question = build_prompt_strategy3(task_name)
@@ -123,7 +139,7 @@ def train_generative(model, train_dataset, test_dataset, task_name, config, meth
         # Test acc only selectively
         should_eval_test = (epoch == 0) or (epoch > 2 and epoch % 2 == 0) or (epoch + 1 == num_epochs)
         if should_eval_test:
-            acc = evaluate_zero_shot(test_dataset, task_name)
+            acc = _evaluate_accuracy(model, test_dataset, task_name)
             print(f"    Epoch {epoch+1}/{num_epochs} — Loss: {avg_loss:.4f} | Train: {train_acc:.1f}% | Test: {acc:.1f}% {'(best!)' if acc > best_acc else ''}")
             if acc > best_acc:
                 best_acc = acc
@@ -136,32 +152,9 @@ def train_generative(model, train_dataset, test_dataset, task_name, config, meth
     print(f"    Best acc: {best_acc:.1f}%")
     return model, best_acc
 
-@torch.no_grad()
-def extract_features(model, dataset, task_name):
-    """Extract last hidden state features from frozen Gemma for linear probe."""
-    question = build_prompt_strategy3(task_name)
-    features, labels = [], []
-
-    for idx in tqdm(range(len(dataset)), desc="  Extracting features", leave=False):
-        img = dataset.get_pil_image(idx)
-        label = dataset.get_label(idx)
-        messages = build_messages(img, question)
-        inputs = processor.apply_chat_template(
-            messages, add_generation_prompt=True, tokenize=True,
-            return_dict=True, return_tensors="pt",
-        ).to(model.device)
-
-        outputs = model(**inputs, output_hidden_states=True)
-        last_hidden = outputs.hidden_states[-1][0, -1, :]
-        features.append(last_hidden.cpu())
-        labels.append(label)
-
-    features = torch.stack(features)
-    labels = torch.tensor(labels, dtype=torch.long)
-    return features, labels
 
 @torch.no_grad()
 def evaluate_generative(model, test_dataset, task_name):
-    return evaluate_zero_shot(test_dataset, task_name, return_confusion=False)
+    return _evaluate_accuracy(model, test_dataset, task_name)
 
 print("✅ Training functions defined.")
