@@ -21,7 +21,7 @@ def train_and_evaluate(model, train_ds, test_ds, config, method_name="",
                        use_ddp=False, rank=0, world_size=1,
                        stop_after_epoch=None):
     """Train model and evaluate on test set.
-    Returns: dict with accuracy, best_epoch, test_history
+    Returns: dict with accuracy, best_epoch
     """
     if device is None:
         device = next(model.parameters()).device
@@ -97,7 +97,6 @@ def train_and_evaluate(model, train_ds, test_ds, config, method_name="",
     patience_counter = 0
     best_test_acc = -1
     best_epoch = 0
-    test_history = {}
 
     for epoch in range(1, epochs + 1):
         if train_sampler is not None:
@@ -156,7 +155,6 @@ def train_and_evaluate(model, train_ds, test_ds, config, method_name="",
                 tc, tt = test_totals.tolist()
 
             test_acc = 100.0 * tc / max(tt, 1.0)
-            test_history[epoch] = test_acc
             if rank == 0:
                 print(f" | Test: {test_acc:.1f}%", end="")
 
@@ -180,20 +178,4 @@ def train_and_evaluate(model, train_ds, test_ds, config, method_name="",
     return {
         "accuracy":     best_test_acc,
         "best_epoch":   best_epoch,
-        "test_history": test_history,
-    }
-
-# =============================================================================
-# Lightweight model stats (params only)
-# =============================================================================
-def measure_model_stats(model, config=None, method_name="cft"):
-    """Trainable / total parameter counts only."""
-    trainable = count_trainable_params(model)
-    total = count_total_params(model)
-    pct = 100.0 * trainable / total if total > 0 else 0.0
-    print(f"  [{method_name}] Trainable: {trainable:,} / {total:,} ({pct:.2f}%)")
-    return {
-        "trainable_params": trainable,
-        "total_params":     total,
-        "trainable_pct":    pct,
     }
