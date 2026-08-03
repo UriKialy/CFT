@@ -7,8 +7,6 @@ import torch.nn.functional as F
 from tqdm.auto import tqdm
 
 # =============================================================================
-# =============================================================================
-# Logic adapted from user's DINOv2 implementation for HuggingFace ViT.
 # EAP-IG: Edge Attribution Patching with Integrated Gradients (Marks et al.)
 # =============================================================================
 import torch.nn.functional as F
@@ -161,7 +159,6 @@ def get_swinv2_nodes(model):
 def discover_circuits_eap_ig(model, dataset, config):
     """
     Discover important circuits using EAP-IG (node-level).
-    Interpolation at INPUT embedding level only (faithful to Marks et al.).
     """
     print(f"\n{'='*70}")
     print("CIRCUIT DISCOVERY — EAP-IG (Integrated Gradients)")
@@ -338,25 +335,6 @@ def discover_circuits_eap_ig(model, dataset, config):
             node_scores[name] += batch_scores[name] / ig_steps
         num_batches += 1
 
-# # ── Normalize: scale MLP scores to head-comparable range ──
-#     # MLPs have  more params than heads — divide MLP scores by that ratio
-#     head_params = nodes_map["layer_0_head_0"]["param_count"]
-#     mlp_params = nodes_map["layer_0_mlp"]["param_count"]
-#     mlp_ratio = mlp_params / head_params  #
-
-#     normalized_scores = {}
-#     for name, score in node_scores.items():
-#         if "mlp" in name:
-#             normalized_scores[name] = score / mlp_ratio
-#         else:
-#             normalized_scores[name] = score
-
-#     sorted_nodes = sorted(normalized_scores.items(), key=lambda x: x[1], reverse=True)
-    # print(f"\nTop 20 nodes by normalized EAP-IG score:")
-    # for i, (name, score) in enumerate(sorted_nodes[:20], 1):
-    #     raw = node_scores[name]
-    #     pc = nodes_map[name]["param_count"]
-    #     print(f"  {i:2d}. {name:<25s} norm={score:.4e}  raw={raw:.4e}  params={pc:,}")
 
     sorted_nodes = sorted(node_scores.items(), key=lambda x: x[1], reverse=True)
     print(f"\nTop 20 nodes by raw EAP-IG score:")
@@ -423,178 +401,3 @@ def select_nodes_by_param_budget(sorted_nodes, nodes_map, total_params, target_p
     print(f"  → {n_h} heads + {n_m} MLPs")
     return selected, used
 print("✅ CFT functions defined.")
-
-def discover_circuits_eap(model, dataset, config):
-    """
-    Discover important circuits using EAP (Edge Attribution Patching).
-    Single forward pass with corrupt input — no interpolation steps.
-    Faster and potentially less overfitting than EAP-IG.
-    """
-    print(f"\n{'='*70}")
-    print("CIRCUIT DISCOVERY — EAP (Edge Attribution Patching)")
-    print(f"{'='*70}")
-
-    batch_size = config["cft_batch_size"]
-    disc_pct   = config["cft_discovery_pct"]
-    patch_size = config["patch_size"]
-
-    num_samples = max(1, int(len(dataset) * disc_pct / 100))
-    print(f"  Samples: {num_samples}/{len(dataset)}, Batch: {batch_size}")
-
-    model.eval()
-    swinv2 = model.swinv2
-    depths = model.config.depths
-    num_heads = model.config.num_heads
-    embed_dim = model.config.embed_dim
-
-    nodes_map = get_swinv2_nodes(model)
-    node_scores = {name: 0.0 for name in nodes_map}
-
-    all_idx = list(range(len(dataset)))
-    np.random.seed(69)
-    torch.manual_seed(69)
-    torch.cuda.manual_seed(69)
-    sample_idx = np.random.choice(all_idx, min(num_samples, len(all_idx)), replace=False)
-
-    num_batches = 0
-
-    corruption_types = [
-        create_patch_shuffled_image,
-        create_gaussian_noise_image,
-        create_channel_shuffled_image,
-    ]
-
-    for batch_start in tqdm(range(0, len(sample_idx), batch_size), desc="EAP"):
-        bidx = sample_idx[batch_start : batch_start + batch_size]
-        images, labels = [], []
-        for idx in bidx:
-            img, lab = dataset[idx]
-            if img.dim() == 3:
-                img = img.unsqueeze(0)
-            images.append(img)
-            labels.append(lab if isinstance(lab, int) else lab.item())
-
-        clean_batch = torch.cat(images, dim=0).to(device)
-        labels_batch = torch.tensor(labels, dtype=torch.long, device=device)
-
-        corrupt_fn = corruption_types[num_batches % 3]
-        corrupted_images = corrupt_fn(clean_batch, patch_size=patch_size)
-
-        # ── Step 1: Clean forward to capture activations ──
-        clean_acts = {}
-
-        def make_capture_hook(storage, name):
-            def hook(mod, inp, out):
-                if isinstance(out, tuple):
-                    storage[name] = out[0].detach()
-                else:
-                    storage[name] = out.detach()
-            return hook
-
-        handles = []
-        for stage_idx, stage in enumerate(swinv2.encoder.layers):
-            for block_idx, block in enumerate(stage.blocks):
-                handles.append(block.attention.output.dense.register_forward_hook(
-                    make_capture_hook(clean_acts, f"stage_{stage_idx}_block_{block_idx}_attn")))
-                handles.append(block.output.dense.register_forward_hook(
-                    make_capture_hook(clean_acts, f"stage_{stage_idx}_block_{block_idx}_mlp")))
-
-        with torch.no_grad():
-            model(pixel_values=clean_batch)
-        for h in handles:
-            h.remove()
-
-        # ── Step 2: Corrupt forward to capture activations ──
-        corrupt_acts = {}
-        handles = []
-        for stage_idx, stage in enumerate(swinv2.encoder.layers):
-            for block_idx, block in enumerate(stage.blocks):
-                handles.append(block.attention.output.dense.register_forward_hook(
-                    make_capture_hook(corrupt_acts, f"stage_{stage_idx}_block_{block_idx}_attn")))
-                handles.append(block.output.dense.register_forward_hook(
-                    make_capture_hook(corrupt_acts, f"stage_{stage_idx}_block_{block_idx}_mlp")))
-
-        with torch.no_grad():
-            model(pixel_values=corrupted_images)
-        for h in handles:
-            h.remove()
-
-        # ── Step 3: Single corrupt forward WITH gradients ──
-        # Hook in corrupt activations as requires_grad tensors to get gradients
-        step_grads = {}
-
-        def make_replace_hook(name):
-            def hook(mod, inp, out):
-                act = corrupt_acts[name].clone().requires_grad_(True)
-                step_grads[name] = act
-                return act
-            return hook
-
-        def make_grad_hook(name):
-            def hook(grad):
-                step_grads[name + '_grad'] = grad.detach()
-            return hook
-
-        fwd_handles = []
-        grad_handles = []
-
-        for stage_idx, stage in enumerate(swinv2.encoder.layers):
-            for block_idx, block in enumerate(stage.blocks):
-                fwd_handles.append(block.attention.output.dense.register_forward_hook(
-                    make_replace_hook(f"stage_{stage_idx}_block_{block_idx}_attn")))
-                fwd_handles.append(block.output.dense.register_forward_hook(
-                    make_replace_hook(f"stage_{stage_idx}_block_{block_idx}_mlp")))
-
-        model.zero_grad()
-        out = model(pixel_values=corrupted_images)
-
-        for name, tensor in step_grads.items():
-            if not name.endswith('_grad') and tensor.requires_grad:
-                grad_handles.append(tensor.register_hook(make_grad_hook(name)))
-
-        loss = F.cross_entropy(out.logits, labels_batch)
-        loss.backward()
-
-        # ── Step 4: Score = (clean - corrupt) * grad_at_corrupt ──
-        for stage_idx in range(len(depths)):
-            stage_dim = embed_dim * (2 ** stage_idx)
-            n_heads_stage = num_heads[stage_idx]
-            d_head = stage_dim // n_heads_stage
-            for block_idx in range(depths[stage_idx]):
-                for prefix in ['attn', 'mlp']:
-                    key = f"stage_{stage_idx}_block_{block_idx}_{prefix}"
-                    grad_key = key + '_grad'
-                    if grad_key in step_grads:
-                        diff = clean_acts[key] - corrupt_acts[key]
-                        grad = step_grads[grad_key]
-                        attr = (diff * grad).mean(dim=(0, 1))
-
-                        if prefix == 'attn':
-                            for h_idx in range(n_heads_stage):
-                                s = attr[h_idx * d_head:(h_idx + 1) * d_head].sum().item()
-                                node_scores[f"stage_{stage_idx}_block_{block_idx}_head_{h_idx}"] += abs(s)
-                        else:
-                            node_scores[f"stage_{stage_idx}_block_{block_idx}_mlp"] += abs(attr.sum().item())
-
-        for h in fwd_handles:
-            h.remove()
-        for h in grad_handles:
-            h.remove()
-        step_grads.clear()
-        num_batches += 1
-
-    sorted_nodes = sorted(node_scores.items(), key=lambda x: x[1], reverse=True)
-    print(f"\nTop 20 nodes by EAP score:")
-    for i, (name, score) in enumerate(sorted_nodes[:20], 1):
-        pc = nodes_map[name]["param_count"]
-        ntype = "MLP" if "mlp" in name else "Head"
-        print(f"  {i:2d}. {name:<25s} score={score:.4e}  params={pc:,}  ({ntype})")
-
-    return {
-        "sorted_nodes": sorted_nodes,
-        "node_scores_raw": node_scores,
-        "nodes_map": nodes_map,
-        "method": "EAP",
-    }
-
-print("✅ EAP circuit discovery function defined.")
