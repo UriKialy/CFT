@@ -335,17 +335,13 @@ def run_vit(tasks=None, config=None, use_ddp=False, rank=0, local_rank=0, world_
     return all_results
 
 # =============================================================================
-# =============================================================================
-# SWIN / GEMMA ORCHESTRATORS — NEW dispatch glue (the only substantial
-# new code in this repo; everything else is copied verbatim from working
-# source files).
-# =============================================================================
+# SWIN / GEMMA ORCHESTRATORS — NEW dispatch glue 
 # =============================================================================
 
 def run_swin(tasks=None, config=None, **_unused):
-    """Run CFT on Swin (HuggingFace Swinv2) for VTAB-1K / CBIS-DDSM.
+    """Run CFT on Swin for VTAB-1K / CBIS-DDSM.
 
-    Uses Swin / circuit_discovery_swin / training_swin (all extracted
+    Uses Swin / circuit_discovery_swin / training_swin
     """
     import Swin as M
     import circuit_discovery_swin as D
@@ -396,14 +392,8 @@ def run_swin(tasks=None, config=None, **_unused):
     return all_results
 
 def run_gemma(tasks=None, config=None, **_unused):
-    """Run CFT on Gemma-3-4B-IT for CUB-200 (the notebook's only task).
-
+    """Run CFT on Gemma-3-4B-IT for CUB-200.
     Uses Gemma / circuit_discovery_gemma / training_gemma / gemma_utils
-    (all.
-
-    NOTE: The notebook code references several module-level globals
-    (processor, model, CONFIG, TASK_CLASS_NAMES, STRUCTURED_TASK_CONFIG).
-    We inject them into the relevant modules before calling their functions.
     """
     from transformers import AutoProcessor, AutoModelForImageTextToText
     import Gemma as MG
@@ -456,7 +446,7 @@ def run_gemma(tasks=None, config=None, **_unused):
         most_confused = GU.get_most_confused_class(confusion, num_classes)
         print(f"[Gemma] Zero-shot acc: {zs_acc:.1f}%")
 
-        # 2) Circuit discovery (EAP-IG) using clean/CF pairs from most_confused
+        # 2) Circuit discovery (EAP-IG) using clean/CF pairs from 
         circuit_info = DG.discover_circuits_eap_ig(model, train_ds, task_name,
                                                     config, most_confused)
         # 3) Select circuits by parameter budget
@@ -465,7 +455,6 @@ def run_gemma(tasks=None, config=None, **_unused):
             TOTAL_PARAMS, config["cft_param_budget"])
 
         # 4) Apply CFT mask and train_generative
-        # The notebook's apply_cft references `used_params` as a notebook-level
         # global — inject it into Gemma before calling apply_cft.
         MG.used_params = used_params
         model_cft = MG.apply_cft(model, selected_nodes, circuit_info["nodes_map"])
