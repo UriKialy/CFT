@@ -157,8 +157,8 @@ SWIN_CONFIG = {
     "cft_batch_size":     32,      # Batch size for EAP-IG
 
     # ── Output ──
-    "save_dir":         "/content/cft_benchmark/results",
-    "seed":             42,
+    "save_dir":         "/cft_benchmark/results",
+    "seed":             292,
 }
 
 SWIN_METHOD_BATCH_SIZE = {
@@ -233,7 +233,6 @@ SWIN_CFT_TASK_EPOCHS = {
 }
 
 SWIN_CFT_DROPOUT = {
-    # Keep what worked
     "caltech101": 0.0, "cifar": 0.05, "dtd": 0.0, "oxford_flowers102": 0.0,
     "oxford_iiit_pet": 0.0, "sun397": 0.05, "svhn": 0.0,
     "diabetic_retinopathy": 0.1, "eurosat": 0.0, "resisc45": 0.0,
@@ -249,7 +248,6 @@ SWIN_CFT_DROPOUT = {
 # =============================================================================
 # =============================================================================
 # GEMMA BACKBONE CONFIG
-# Copied
 # All Gemma symbols are prefixed GEMMA_ to avoid colliding with ViT config.
 # =============================================================================
 # =============================================================================
@@ -274,7 +272,7 @@ GEMMA_CONFIG = {
     "patch_size":       4,
 
     # ── Data ──
-    "data_dir":         "/workspace/cft_benchmark/fgvc",
+    "data_dir":         "/cft_benchmark/fgvc",
     "use_gpu_cache":    True,
 
     # ── Training ──
@@ -296,7 +294,7 @@ GEMMA_CONFIG = {
     "cft_batch_size":     32,
 
     # ── Output ──
-    "save_dir":         "/workspace/cft_benchmark/results",
+    "save_dir":         "/cft_benchmark/results",
     "seed":             42,
 }
 
