@@ -1,10 +1,3 @@
-"""
-Swin PEFT methods
-
-CFT-only build keeps all original methods (full_finetune, linear_probe, vpt_deep,
-ssf, adaptformer, cft) so build_model still works, but only cft is used in this
-repo's CLI. To use other methods, call build_model(method=...) directly.
-"""
 import math
 from collections import defaultdict
 from functools import reduce
@@ -106,9 +99,7 @@ def apply_cft(model, num_classes, config, selected_nodes=None, nodes_map=None, t
         for param in block.output.dense.parameters():
             param.requires_grad = True
 
-    # ── Always-on small params (~0.32% of Swinv2-B backbone) ──
-    # LayerNorms, patch-embed bias, logit_scale, continuous_position_bias_mlp.
-    # Standard in BitFit/SSF/SPT recipes; cheap and boost VTAB-1K acc.
+
     for name, param in model.named_parameters():
         if "layernorm" in name.lower() or "layer_norm" in name.lower():
             param.requires_grad = True
@@ -153,7 +144,6 @@ def apply_cft(model, num_classes, config, selected_nodes=None, nodes_map=None, t
 
 # ======================= UNIFIED BUILD =====================================
 def build_model(method, num_classes, config, selected_nodes=None, nodes_map=None, task_name=""):
-    """Factory: load pretrained SwinV2 and apply specified PEFT method."""
     model = Swinv2ForImageClassification.from_pretrained(config["model_name"])
 
     # SwinV2 classifier: final dim = embed_dim * 2^(num_stages-1)
@@ -173,5 +163,3 @@ def build_model(method, num_classes, config, selected_nodes=None, nodes_map=None
     else:
         print(f"  [{method}] Trainable: {trainable:,} / {total:,} ({100*trainable/total:.2f}%)")
     return model
-
-# Quick sanity check
