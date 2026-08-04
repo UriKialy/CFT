@@ -31,10 +31,6 @@ For each (backbone, task) pair the pipeline is:
 Corrupted inputs are produced by patch-shuffling, gaussian noise,
 channel-shuffling, intensity inversion, or cutout (`--corruption`).
 
-Always-trainable regardless of circuit selection: the classifier head, all
-LayerNorms, and position/patch embeddings - about 0.9 % of ViT-B and 0.3 % of
-Swinv2-B backbone parameters.
-
 ## Quick start
 
 ```bash
