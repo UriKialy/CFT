@@ -126,19 +126,3 @@ manual-tuning sources — no grid-search code is included.
   `lr=3e-4, wd=5e-2, smoothing=0.2, budget=12 %`.
 - **Gemma + CUB-200**: zero-shot pass first to compute confused-class pairs,
   then EAP-IG with those pairs, then generative training.
-
-## Known caveats
-
-- The Swin and Gemma code paths were extracted from notebooks and not
-  re-validated end-to-end after extraction. Run them once on a small task before
-  trusting full-sweep numbers.
-- The notebook-extracted Gemma `apply_cft` (in `methods_gemma.py`) references
-  a `used_params` variable that the runner injects before the call. If you call
-  `methods_gemma.apply_cft` from outside `run_cft.py`, set
-  `methods_gemma.used_params` first.
-- DDP (`--ddp`) is implemented in the ViT path only.
-
-## References
-
-- Hanna, Pezeshkpour, Berg-Kirkpatrick. *Have Faith in Faithfulness: Going Beyond
-  Circuit Overlap When Faithfulness Matters.* COLM 2024 — `EAP_IG.pdf`.
