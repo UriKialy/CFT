@@ -56,7 +56,7 @@ python run_cft.py --backbone vit --dataset vtab --tasks cifar dtd svhn
 | ------------ | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
 | `vit`        | `google/vit-base-patch16-224-in21k`               | Default. 224 × 224 input.                                                                                                                  |
 | `swin`       | `microsoft/swinv2-base-patch4-window8-256`        | 256 × 256. CFT code extracted from `Swin_vtab1k_CFT.ipynb`.                                                                                |
-| `gemma`      | `google/gemma-3-4b-it`                            | Vision-language model. Generative fine-tuning. Use **only with** `--dataset cub200`. CFT code extracted from `CFT_Gemma3_4B_IT_CUB200.ipynb`. |
+| `gemma`      | `google/gemma-3-4b-it`                            | Vision-language model. Generative fine-tuning. Use **only with** `--dataset cub200`. |
 
 > **HuggingFace gating note.** `google/gemma-3-4b-it` requires you to accept the
 > license on its model page and run `huggingface-cli login` (or set `HF_TOKEN`)
