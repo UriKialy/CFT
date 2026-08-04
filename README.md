@@ -83,3 +83,4 @@ python run_cft.py --backbone vit --dataset vtab --tasks cifar dtd svhn
 ```
 
 Run `python run_cft.py --help` for the full list.
+Want to add a model/dataset? leave an issue and we will add it :)
