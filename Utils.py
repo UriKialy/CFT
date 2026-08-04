@@ -153,11 +153,16 @@ def apply_cft(model, num_classes, config, selected_nodes=None, nodes_map=None):
 # =============================================================================
 # Unified model builder
 # =============================================================================
-def build_model(method, num_classes, config, device=None,
+def build_model(num_classes, config, device=None,
                 selected_nodes=None, nodes_map=None):
     model = ViTForImageClassification.from_pretrained(config["model_name"])
     model.classifier = nn.Linear(model.config.hidden_size, num_classes)
-    nn.init.normal_(model.classifier.weight, std=1e-5)
+    if selected_nodes is None:
+        # Discovery: near-zero head so EAP-IG scores reflect backbone contributions
+        nn.init.normal_(model.classifier.weight, std=1e-5)
+    else:
+        # Training: Kaiming for actual learning
+        nn.init.kaiming_normal_(model.classifier.weight, nonlinearity="linear")
     nn.init.zeros_(model.classifier.bias)
     head_drop = config.get("head_dropout", 0.0)
     if head_drop > 0:
@@ -170,9 +175,9 @@ def build_model(method, num_classes, config, device=None,
 
     trainable = count_trainable_params(model)
     total = count_total_params(model)
-    if method == "cft" and hasattr(model, '_cft_effective_params'):
+    if hasattr(model, "_cft_effective_params"):
         effective = model._cft_effective_params
-        print(f"  [{method}] Trainable: {trainable:,} (effective after masking: {effective:,}, {100*effective/total:.2f}%)")
+        print(f"  [cft] Trainable: {trainable:,} (effective after masking: {effective:,}, {100*effective/total:.2f}%)")
     else:
-        print(f"  [{method}] Trainable: {trainable:,} / {total:,} ({100*trainable/total:.2f}%)")
+        print(f"  [cft] Trainable: {trainable:,} / {total:,} ({100*trainable/total:.2f}%)")
     return model

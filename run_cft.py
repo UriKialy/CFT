@@ -12,10 +12,8 @@ os.environ.setdefault("HF_HUB_DISABLE_PROGRESS_BARS", "1")
 
 import numpy as np
 import torch
-import torch.nn as nn
 import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel as DDP
-from transformers import ViTForImageClassification
 from transformers.utils import logging as transformers_logging
 
 try:
@@ -23,11 +21,11 @@ try:
 except Exception:
     hf_disable_progress_bars = None
 
-from config import CONFIG, CFT_TASK_CONFIGS, VTAB_TASKS, setup_environment
+from config import CONFIG, CFT_TASK_CONFIGS, SWIN_TASK_CONFIGS, VTAB_TASKS, setup_environment
 from dataset import load_vtab_task
 from Utils import build_model
 from training import train_and_evaluate
-from circuit_discovery import pretrain_classifier, discover_circuits_eap_ig, select_nodes_by_param_budget
+from circuit_discovery import discover_circuits_eap_ig, select_nodes_by_param_budget
 
 def disable_hf_progress_output():
     """Disable Hugging Face progress bars for cleaner logs."""
@@ -87,22 +85,18 @@ def make_serializable(obj):
         return obj.tolist()
     return obj
 
-def build_cft_method_name(method_tag, pretrain_head, corruption, score_norm, method):
+def build_cft_method_name(method_tag, corruption, method):
     """Build a stable method name from the discovery option set."""
     if method_tag:
         return method_tag
     parts = ["cft", "log_prob_diff", method]
-    if pretrain_head:
-        parts.append("pretrain_head")
     if corruption != "patch_shuffle":
         parts.append(f"corr_{corruption}")
-    if score_norm != "param_count":
-        parts.append(f"norm_{score_norm}")
     return "__".join(parts)
 
 def run_vit(tasks=None, config=None, use_ddp=False, rank=0, local_rank=0, world_size=1,
-            pretrain_head=False, corruption="patch_shuffle",
-            score_norm="param_count", method="eap-ig", method_tag=None,
+            corruption="patch_shuffle",
+            method="eap-ig", method_tag=None,
             stop_after_epoch=None):
     if config is None:
         config = CONFIG.copy()
@@ -110,9 +104,7 @@ def run_vit(tasks=None, config=None, use_ddp=False, rank=0, local_rank=0, world_
         tasks = VTAB_TASKS
     method_name = build_cft_method_name(
         method_tag=method_tag,
-        pretrain_head=pretrain_head,
         corruption=corruption,
-        score_norm=score_norm,
         method=method,
     )
 
@@ -157,39 +149,29 @@ def run_vit(tasks=None, config=None, use_ddp=False, rank=0, local_rank=0, world_
         if is_main_process(rank):
             print(f"\n  Circuit discovery for {task_name}...")
             log_checkpoint_load_event(rank, stage="discovery", event="START")
-            cft_base = ViTForImageClassification.from_pretrained(config["model_name"])
+            # build_model with selected_nodes=None -> near-zero head init for discovery
+            cft_base = build_model(num_classes, config, device)
             log_checkpoint_load_event(rank, stage="discovery", event="END")
             log_checkpoint_info(cft_base, config, rank, stage="discovery")
-            cft_base.classifier = nn.Linear(cft_base.config.hidden_size, num_classes)
-            nn.init.zeros_(cft_base.classifier.bias)
-            cft_base = cft_base.to(device)
 
-            # ----- Discovery cache (budget-INDEPENDENT scores + head_state) -----
+            # ----- Discovery cache (budget-INDEPENDENT) -----
             cache_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                      "cache", "discovery")
             os.makedirs(cache_dir, exist_ok=True)
-            _ph = "ph1" if pretrain_head else "ph0"
-            cache_key = f"{task_name}__{corruption}__{score_norm}__log_prob_diff__{method}__{_ph}"
+            cache_key = f"{task_name}__{corruption}__log_prob_diff__{method}"
             cache_path = os.path.join(cache_dir, f"{cache_key}.pt")
 
             if os.path.exists(cache_path):
                 print(f"  [discovery cache HIT] {cache_key}")
                 blob = torch.load(cache_path, map_location="cpu", weights_only=False)
                 circuit_info = blob["circuit_info"]
-                head_state = blob["head_state"]
             else:
-                if pretrain_head:
-                    pretrain_classifier(cft_base, train_ds, device)
                 cft_base.eval()
                 circuit_info = discover_circuits_eap_ig(
                     cft_base, train_ds, config, device,
-                    corruption=corruption, score_norm=score_norm,
-                    method=method,
+                    corruption=corruption, method=method,
                 )
-                head_state = None
-                if pretrain_head:
-                    head_state = {k: v.cpu().clone() for k, v in cft_base.classifier.state_dict().items()}
-                torch.save({"circuit_info": circuit_info, "head_state": head_state}, cache_path)
+                torch.save({"circuit_info": circuit_info}, cache_path)
                 print(f"  [discovery cache SAVE] {cache_key}")
 
             # ----- Selection (budget-DEPENDENT, always runs) -----
@@ -205,7 +187,6 @@ def run_vit(tasks=None, config=None, use_ddp=False, rank=0, local_rank=0, world_
                 "backbone_params": backbone_params,
                 "selected_nodes": selected_nodes,
                 "used_params": used_params,
-                "head_state": head_state,
             }
             del cft_base
             gc.collect()
@@ -221,7 +202,6 @@ def run_vit(tasks=None, config=None, use_ddp=False, rank=0, local_rank=0, world_
         backbone_params = circuit_payload["backbone_params"]
         selected_nodes = circuit_payload["selected_nodes"]
         used_params = circuit_payload["used_params"]
-        head_state = circuit_payload.get("head_state")
 
         # Train CFT
         if is_main_process(rank):
@@ -230,14 +210,10 @@ def run_vit(tasks=None, config=None, use_ddp=False, rank=0, local_rank=0, world_
         try:
             log_checkpoint_load_event(rank, stage="train", event="START")
             model = build_model(
-                "cft", num_classes, config, device,
+                num_classes, config, device,
                 selected_nodes=selected_nodes,
                 nodes_map=circuit_info["nodes_map"],
             )
-            if head_state is not None:
-                model.classifier.load_state_dict(head_state)
-                if is_main_process(rank):
-                    print("  Loaded pretrained classifier head into training model")
             log_checkpoint_load_event(rank, stage="train", event="END")
             base_model = model.module if hasattr(model, "module") else model
             log_checkpoint_info(base_model, config, rank, stage="train")
@@ -362,7 +338,7 @@ def run_swin(tasks=None, config=None, **_unused):
         train_ds, test_ds, num_classes = load_vtab_task(task_name, config, device)
 
         # 1) Circuit discovery
-        cft_base = M.build_model("full_finetune", num_classes, config, task_name=task_name)
+        cft_base = M.build_model(num_classes, config, task_name=task_name)
         cft_base = cft_base.to(device).eval()
         circuit_info = D.discover_circuits_eap_ig(cft_base, train_ds, config)
         backbone_params = sum(p.numel() for n, p in cft_base.named_parameters()
@@ -373,13 +349,14 @@ def run_swin(tasks=None, config=None, **_unused):
         del cft_base; torch.cuda.empty_cache()
 
         # 2) Build CFT model with selected circuits and train
-        model = M.build_model("cft", num_classes, config,
+        model = M.build_model(num_classes, config,
                               selected_nodes=selected_nodes,
                               nodes_map=circuit_info["nodes_map"],
                               task_name=task_name).to(device)
         scaler = torch.amp.GradScaler('cuda') if torch.cuda.is_available() else None
         result = T.train_and_evaluate(model, train_ds, test_ds, config,
                                       method_name="cft", task_name=task_name,
+                                      cft_task_configs=SWIN_TASK_CONFIGS,
                                       scaler=scaler)
         all_results[task_name] = result
         # Save incremental JSON
@@ -483,28 +460,22 @@ if __name__ == "__main__":
                         help="Integrated gradient steps")
     parser.add_argument("--discovery-pct", type=float, default=None,
                         help="%% of training data for circuit discovery")
-    parser.add_argument("--pretrain-head", action="store_true", default=False,
-                        help="Pre-train classifier head before discovery")
     parser.add_argument("--corruption",
                         choices=["patch_shuffle", "gaussian", "channel_shuffle",
                                  "intensity_invert", "cutout", "multi", "multi_med"],
                         default="patch_shuffle",
                         help="Corruption for EAP-IG. multi=avg all; multi_med=mammo-friendly subset.")
-    parser.add_argument("--score-norm",
-                        choices=["param_count", "rank", "mlp_balanced"],
-                        default="mlp_balanced",
-                        help="param_count | rank | mlp_balanced (default — only MLP scores discounted by mlp_pc/head_pc)")
     parser.add_argument("--method", choices=["eap-ig", "eap"],
                         default="eap-ig",
                         help="Discovery method: eap-ig (IG path) | eap (single gradient)")
     parser.add_argument("--method-tag", type=str, default=None,
                         help="Optional label saved in result field 'method' and run history key")
     parser.add_argument("--lr", type=float, default=None,
-                        help="Override CFT_TASK_CONFIGS[task]['lr']")
+                        help="Override per-task 'lr' for the selected backbone")
     parser.add_argument("--wd", type=float, default=None,
-                        help="Override CFT_TASK_CONFIGS[task]['wd']")
+                        help="Override per-task 'wd' for the selected backbone")
     parser.add_argument("--label-smoothing", type=float, default=None,
-                        help="Override CFT_TASK_CONFIGS[task]['label_smoothing']")
+                        help="Override per-task 'label_smoothing' for the selected backbone")
     parser.add_argument("--dropout", type=float, default=None,
                         help="Classifier-head dropout (sets config['head_dropout'])")
     parser.add_argument("--backbone", choices=["vit", "swin", "gemma"], default="vit",
@@ -532,11 +503,6 @@ if __name__ == "__main__":
         config["cft_discovery_pct"] = args.discovery_pct
     if args.dropout is not None:
         config["head_dropout"] = args.dropout
-    for tn in (args.tasks or VTAB_TASKS):
-        if tn in CFT_TASK_CONFIGS:
-            if args.lr is not None: CFT_TASK_CONFIGS[tn]["lr"] = args.lr
-            if args.wd is not None: CFT_TASK_CONFIGS[tn]["wd"] = args.wd
-            if args.label_smoothing is not None: CFT_TASK_CONFIGS[tn]["label_smoothing"] = args.label_smoothing
 
 
     # Pick the backbone-specific CONFIG and per-task HP table
@@ -551,14 +517,16 @@ if __name__ == "__main__":
     if args.data_dir is not None:
         backbone_config["data_dir"] = args.data_dir
     config = backbone_config
+    # Per-task CLI overrides apply to the backbone's per-task dict.
+    for tn in (args.tasks or VTAB_TASKS):
+        if tn in backbone_task_configs:
+            if args.lr is not None:
+                backbone_task_configs[tn]["lr"] = args.lr
+            if args.wd is not None:
+                backbone_task_configs[tn]["wd"] = args.wd
+            if args.label_smoothing is not None:
+                backbone_task_configs[tn]["label_smoothing"] = args.label_smoothing
 
-    # Make the per-task HPs visible to the backbone-specific runners that look
-    # up CFT_TASK_CONFIGS by module name. (run_vit reads the top-level
-    # CFT_TASK_CONFIGS already imported above.)
-    if args.backbone != "vit":
-        # Replace contents of CFT_TASK_CONFIGS in-place
-        CFT_TASK_CONFIGS.clear()
-        CFT_TASK_CONFIGS.update(backbone_task_configs)
 
     use_ddp, rank, local_rank, world_size = init_ddp(use_ddp=args.ddp)
     try:
@@ -570,9 +538,7 @@ if __name__ == "__main__":
                 rank=rank,
                 local_rank=local_rank,
                 world_size=world_size,
-                pretrain_head=args.pretrain_head,
                 corruption=args.corruption,
-                score_norm=args.score_norm,
                 method=args.method,
                 method_tag=args.method_tag,
                 stop_after_epoch=args.stop_after_epoch,

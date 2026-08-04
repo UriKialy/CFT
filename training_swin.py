@@ -34,8 +34,8 @@ def train_and_evaluate(model, train_ds, test_ds, config,
         device = next(model.parameters()).device
 
     if cft_task_configs is None:
-        from config import CFT_TASK_CONFIGS
-        cft_task_configs = CFT_TASK_CONFIGS
+        from config import SWIN_TASK_CONFIGS
+        cft_task_configs = SWIN_TASK_CONFIGS
 
     task_cfg = cft_task_configs.get(task_name, {})
     lr              = task_cfg.get("lr", config.get("learning_rate", 1e-4))

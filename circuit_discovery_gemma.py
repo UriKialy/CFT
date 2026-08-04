@@ -6,6 +6,7 @@ to be in scope when discover_circuits_eap_ig is called.
 """
 import numpy as np
 import torch
+import gc
 import torch.nn.functional as F
 from tqdm.auto import tqdm
 from collections import defaultdict

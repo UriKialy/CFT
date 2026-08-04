@@ -110,8 +110,8 @@ def apply_cft(model, num_classes, config, selected_nodes=None, nodes_map=None, t
         elif "continuous_position_bias_mlp" in name:
             param.requires_grad = True
 
-    # ── Dropout for unfrozen layers ──
-    dropout_rate = CFT_DROPOUT.get(task_name, 0.0)
+    # ── Dropout for unfrozen layers (from task config) ──
+    dropout_rate = config.get("head_dropout", 0.0)
     if dropout_rate > 0:
         for name, module in model.named_modules():
             if isinstance(module, nn.Dropout):
@@ -143,13 +143,18 @@ def apply_cft(model, num_classes, config, selected_nodes=None, nodes_map=None, t
     return model
 
 # ======================= UNIFIED BUILD =====================================
-def build_model(method, num_classes, config, selected_nodes=None, nodes_map=None, task_name=""):
+def build_model(num_classes, config, selected_nodes=None, nodes_map=None, task_name=""):
     model = Swinv2ForImageClassification.from_pretrained(config["model_name"])
 
     # SwinV2 classifier: final dim = embed_dim * 2^(num_stages-1)
     final_dim = model.config.embed_dim * (2 ** (len(model.config.depths) - 1))  # 1024
     model.classifier = nn.Linear(final_dim, num_classes)
-    nn.init.normal_(model.classifier.weight, std=1e-5)
+    if selected_nodes is None:
+        # Discovery: near-zero head so EAP-IG scores reflect backbone contributions
+        nn.init.normal_(model.classifier.weight, std=1e-5)
+    else:
+        # Training: Kaiming for actual learning
+        nn.init.kaiming_normal_(model.classifier.weight, nonlinearity="linear")
     nn.init.zeros_(model.classifier.bias)
 
     model = apply_cft(model, num_classes, config, selected_nodes, nodes_map, task_name)
@@ -157,9 +162,9 @@ def build_model(method, num_classes, config, selected_nodes=None, nodes_map=None
     model = model.to(device)
     trainable = count_trainable_params(model)
     total = count_total_params(model)
-    if method == "cft" and hasattr(model, '_cft_effective_params'):
+    if hasattr(model, "_cft_effective_params"):
         effective = model._cft_effective_params
-        print(f"  [{method}] Trainable: {trainable:,} (effective after masking: {effective:,}, {100*effective/total:.2f}%)")
+        print(f"  [cft] Trainable: {trainable:,} (effective after masking: {effective:,}, {100*effective/total:.2f}%)")
     else:
-        print(f"  [{method}] Trainable: {trainable:,} / {total:,} ({100*trainable/total:.2f}%)")
+        print(f"  [cft] Trainable: {trainable:,} / {total:,} ({100*trainable/total:.2f}%)")
     return model

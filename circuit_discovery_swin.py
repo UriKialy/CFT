@@ -337,8 +337,7 @@ def select_nodes_by_param_budget(sorted_nodes, nodes_map, total_params, target_p
     """Pick top nodes until cumulative params reach target_pct of total_params.
     Strategy: first pick the best head from each layer, then fill remaining budget with top nodes.
     """
-    budget_pct = CFT_TASK_BUDGETS.get(task_name, CONFIG["cft_param_budget"])
-    budget = int(budget_pct / 100 * total_params) if budget_pct > 1 else int(budget_pct * total_params)
+    budget = int(target_pct / 100 * total_params) if target_pct > 1 else int(target_pct * total_params)
     best_head_per_block = {}  # (stage_idx, block_idx) -> (name, score)
     for name, score in sorted_nodes:
         if "head" not in name:
