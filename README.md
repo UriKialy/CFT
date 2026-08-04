@@ -9,8 +9,8 @@ CFT is a parameter-efficient fine-tuning (PEFT) method that uses
 [Hanna et al., COLM 2024](https://arxiv.org/abs/2403.17806))
 to identify a small subset of attention heads and MLP blocks that are most
 important for a downstream task. Only those discovered "circuit" components are
-unfrozen during fine-tuning, giving full-finetune-quality accuracy at a fraction
-of the trainable parameter budget.
+unfrozen during fine-tuning, giving-finetune-quality accuracy at a fraction
+of the compute budget against PEFT methods.
 
 ## What CFT does, end-to-end
 
