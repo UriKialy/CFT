@@ -62,62 +62,7 @@ python run_cft.py --backbone vit --dataset vtab --tasks cifar dtd svhn
 > license on its model page and run `huggingface-cli login` (or set `HF_TOKEN`)
 > before the first `from_pretrained` call.
 
-## Datasets supported
 
-### VTAB-1K (`--dataset vtab`)
-
-19 tasks, 800 train + 200 val + full test per task. Download in one shot:
-
-```bash
-bash setup_vtab.sh                  # clones SSF repo, copies vtab-1k/ over
-```
-
-If `setup_vtab.sh` fails (the SSF repo uses Git LFS), fall back to the Google
-Drive tar:
-
-```bash
-pip install gdown
-gdown "1l6pee_JfU7zSxNR3icH3Lpvg_g8JQ8i8" -O data/vtab-1k.tar
-mkdir -p data && tar xf data/vtab-1k.tar -C data
-```
-
-### CBIS-DDSM (`--dataset cbis`)
-
-CBIS-DDSM (Curated Breast Imaging Subset of DDSM) needs Kaggle access. Three steps:
-
-```bash
-# 1. download from Kaggle — awsaf49/cbis-ddsm-breast-cancer-image-dataset
-#    This is ~50 GB. You can use the kagglehub library or the Kaggle CLI:
-pip install kagglehub
-python -c "import kagglehub; print(kagglehub.dataset_download('awsaf49/cbis-ddsm-breast-cancer-image-dataset'))"
-
-# 2. convert the Kaggle dump into VTAB train800.txt/test.txt format
-python prep_cbis.py \
-    --src /path/to/kagglehub/cbis-ddsm/... \
-    --out data/vtab-1k/cbis_ddsm \
-    --series "cropped images" \
-    --size 224
-
-# 3. run CFT on CBIS-DDSM
-python run_cft.py --backbone vit --dataset cbis
-```
-
-`prep_cbis.py` reads the dicom_info.csv + 4 case CSVs that ship with awsaf49's
-Kaggle dataset, resizes the chosen series' JPEGs to 224×224 PNGs, and writes a
-binary `MALIGNANT / BENIGN` label per image.
-
-### CUB-200 (`--dataset cub200`, Gemma only)
-
-Standard CUB-200-2011 layout. Download from the official site:
-
-```bash
-mkdir -p data/cub200
-wget https://data.caltech.edu/records/65de6-vp158/files/CUB_200_2011.tgz -O data/cub200/CUB_200_2011.tgz
-tar xf data/cub200/CUB_200_2011.tgz -C data/cub200/
-# you should now have data/cub200/CUB_200_2011/images.txt, classes.txt, etc.
-
-python run_cft.py --backbone gemma --dataset cub200 --data-dir data
-```
 
 ## Important CLI flags
 
