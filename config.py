@@ -68,36 +68,12 @@ CFT_TASK_CONFIGS = {
 # =============================================================================
 # Task lists
 # =============================================================================
-VTAB_TASKS = [
-    # Natural (7)
-    "caltech101", "cifar", "dtd", "oxford_flowers102",
-    "oxford_iiit_pet", "sun397", "svhn",
-    # Specialized (4)
-    "diabetic_retinopathy", "eurosat", "patch_camelyon", "resisc45",
-    # Structured (8)
-    "clevr_count", "clevr_dist", "dmlab", "dsprites_loc",
-    "dsprites_ori", "kitti", "smallnorb_azi", "smallnorb_ele",
-]
-
-NATURAL_TASKS = ["cifar", "caltech101", "dtd", "oxford_flowers102",
+NATURAL_TASKS = ["caltech101", "cifar", "dtd", "oxford_flowers102",
                  "oxford_iiit_pet", "sun397", "svhn"]
-SPECIALIZED_TASKS = ["patch_camelyon", "eurosat", "resisc45", "diabetic_retinopathy"]
-STRUCTURED_TASKS = ["clevr_count", "clevr_dist", "dmlab", "kitti",
-                    "dsprites_loc", "dsprites_ori", "smallnorb_azi", "smallnorb_ele"]
-
-METHODS = ["cft"]
-
-# Short names for display
-TASK_SHORT_NAMES = {
-    "cifar": "CIFAR", "caltech101": "Cal101", "dtd": "DTD",
-    "oxford_flowers102": "Flwr", "oxford_iiit_pet": "Pets",
-    "sun397": "Sun397", "svhn": "SVHN",
-    "patch_camelyon": "Camel", "eurosat": "EuroS", "resisc45": "RESI",
-    "diabetic_retinopathy": "DRet",
-    "clevr_count": "CClnt", "clevr_dist": "CDist", "dmlab": "DMLab",
-    "kitti": "KITTI", "dsprites_loc": "DSLoc", "dsprites_ori": "DSOri",
-    "smallnorb_azi": "SNAzi", "smallnorb_ele": "SNEle",
-}
+SPECIALIZED_TASKS = ["diabetic_retinopathy", "eurosat", "patch_camelyon", "resisc45"]
+STRUCTURED_TASKS = ["clevr_count", "clevr_dist", "dmlab", "dsprites_loc",
+                    "dsprites_ori", "kitti", "smallnorb_azi", "smallnorb_ele"]
+VTAB_TASKS = NATURAL_TASKS + SPECIALIZED_TASKS + STRUCTURED_TASKS
 
 # =============================================================================
 # Device & seed setup
@@ -242,13 +218,20 @@ GEMMA_CFT_TASK_LRS = {"cub200": 5e-5}
 GEMMA_CFT_TASK_EPOCHS = {"cub200": 4}
 
 def get_backbone_config(backbone):
-    """Return the CONFIG dict to use for this backbone.
-
-    Note: the ViT 'CONFIG' dict (defined at top of file) is the default.
-    For Swin, returns SWIN_CONFIG. For Gemma, returns GEMMA_CONFIG.
-    """
+    """Return the global CONFIG dict (paths, model_name, defaults) for this backbone."""
     if backbone == "vit":
         return dict(CONFIG)
+    if backbone == "swin":
+        return dict(SWIN_CONFIG)
+    if backbone == "gemma":
+        return dict(GEMMA_CONFIG)
+    raise ValueError(f"Unknown backbone: {backbone!r}")
+
+
+def get_task_configs(backbone):
+    """Return per-task hyperparameter dict {task_name: {lr, wd, ...}} for this backbone."""
+    if backbone == "vit":
+        return CFT_TASK_CONFIGS
     if backbone == "swin":
         return SWIN_TASK_CONFIGS
     if backbone == "gemma":

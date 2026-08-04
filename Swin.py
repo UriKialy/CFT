@@ -5,6 +5,7 @@ from operator import mul
 
 import torch
 import torch.nn as nn
+from Utils import count_trainable_params, count_total_params
 import torch.nn.functional as F
 
 from transformers import Swinv2ForImageClassification, Swinv2Config, Swinv2Model
@@ -143,7 +144,7 @@ def apply_cft(model, num_classes, config, selected_nodes=None, nodes_map=None, t
     return model
 
 # ======================= UNIFIED BUILD =====================================
-def build_model(num_classes, config, selected_nodes=None, nodes_map=None, task_name=""):
+def build_model(num_classes, config, device=None, selected_nodes=None, nodes_map=None, task_name=""):
     model = Swinv2ForImageClassification.from_pretrained(config["model_name"])
 
     # SwinV2 classifier: final dim = embed_dim * 2^(num_stages-1)
@@ -159,7 +160,8 @@ def build_model(num_classes, config, selected_nodes=None, nodes_map=None, task_n
 
     model = apply_cft(model, num_classes, config, selected_nodes, nodes_map, task_name)
 
-    model = model.to(device)
+    if device is not None:
+        model = model.to(device)
     trainable = count_trainable_params(model)
     total = count_total_params(model)
     if hasattr(model, "_cft_effective_params"):

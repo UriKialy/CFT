@@ -1,3 +1,4 @@
+# pylint: disable=undefined-variable
 """
 Gemma dataset loaders
 

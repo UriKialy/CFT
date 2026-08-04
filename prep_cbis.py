@@ -75,7 +75,7 @@ def main():
         if not out_path.exists():
             try:
                 Image.open(src_jpg).convert("L") \
-                     .resize((args.size, args.size), Image.BICUBIC).convert("RGB") \
+                     .resize((args.size, args.size), Image.Resampling.BICUBIC).convert("RGB") \
                      .save(out_path)
             except Exception:
                 n_skip += 1; continue

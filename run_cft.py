@@ -21,7 +21,7 @@ try:
 except Exception:
     hf_disable_progress_bars = None
 
-from config import CONFIG, CFT_TASK_CONFIGS, SWIN_TASK_CONFIGS, VTAB_TASKS, setup_environment
+from config import CONFIG, CFT_TASK_CONFIGS, SWIN_TASK_CONFIGS, VTAB_TASKS, GEMMA_CONFIG, GEMMA_TASKS, setup_environment
 from dataset import load_vtab_task
 from Utils import build_model
 from training import train_and_evaluate
@@ -197,11 +197,11 @@ def run_vit(tasks=None, config=None, use_ddp=False, rank=0, local_rank=0, world_
             dist.broadcast_object_list(payload, src=0)
             dist.barrier()
 
-        circuit_payload = payload[0]
-        circuit_info = circuit_payload["circuit_info"]
-        backbone_params = circuit_payload["backbone_params"]
-        selected_nodes = circuit_payload["selected_nodes"]
-        used_params = circuit_payload["used_params"]
+        circuit_payload = payload[0]  # pylint: disable=unsubscriptable-object  # pylint: disable=unsubscriptable-object
+        circuit_info = circuit_payload["circuit_info"]  # pylint: disable=unsubscriptable-object
+        backbone_params = circuit_payload["backbone_params"]  # pylint: disable=unsubscriptable-object
+        selected_nodes = circuit_payload["selected_nodes"]  # pylint: disable=unsubscriptable-object
+        used_params = circuit_payload["used_params"]  # pylint: disable=unsubscriptable-object
 
         # Train CFT
         if is_main_process(rank):
@@ -379,9 +379,9 @@ def run_gemma(tasks=None, config=None, **_unused):
     from dataset_gemma import _load_cub200, load_cub_class_names
 
     if config is None:
-        config = GEMMA_CONFIG.copy() if 'GEMMA_CONFIG' in globals() else CONFIG.copy()
+        config = GEMMA_CONFIG.copy()
     if tasks is None:
-        tasks = GEMMA_TASKS if 'GEMMA_TASKS' in globals() else ["cub200"]
+        tasks = list(GEMMA_TASKS)
 
     setup_environment(config)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")

@@ -1,3 +1,4 @@
+# pylint: disable=undefined-variable
 """
 Gemma generative training loop
 Requires gemma_utils helpers 
