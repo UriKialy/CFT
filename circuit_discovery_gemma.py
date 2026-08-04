@@ -68,14 +68,25 @@ def get_gemma_nodes(model):
     print(f"  ✓ {len(nodes)} nodes ({total_heads} heads + {total_mlps} MLPs) across {num_layers} layers")
     return nodes
 
-def build_cf_pairs(dataset, task_name, most_confused_map):
+# Hardcoded most-confused pairs from Gemma-3-4B zero-shot on CUB-200
+# (5-class sample; ZS acc was 0.6% so signal is weak — fallback covers the rest).
+_CUB200_MOST_CONFUSED = {
+    0: 66,
+    1:  3,
+    2: 66,
+    3: 66,
+    4: 66,
+}
+
+
+def build_cf_pairs(dataset, task_name):
     """Build clean/counterfactual pairs using most-confused class mapping."""
     samples_by_class = dataset.get_samples_by_class()
     pairs = []  # list of (clean_idx, cf_idx)
 
     for idx in range(len(dataset)):
         clean_label = dataset.get_label(idx)
-        cf_class = most_confused_map.get(clean_label, (clean_label + 1) % dataset.num_classes)
+        cf_class = _CUB200_MOST_CONFUSED.get(clean_label, (clean_label + 1) % dataset.num_classes)
 
         if cf_class in samples_by_class and len(samples_by_class[cf_class]) > 0:
             cf_idx = np.random.choice(samples_by_class[cf_class])
@@ -107,7 +118,7 @@ def get_target_token_id(task_name, label_idx):
     token_ids = processor.tokenizer.encode(answer_text, add_special_tokens=False)
     return token_ids[0] if token_ids else None
 
-def discover_circuits_eap_ig(model, train_dataset, task_name, config, most_confused_map):
+def discover_circuits_eap_ig(model, train_dataset, task_name, config):
     """
     EAP-IG circuit discovery for Gemma VLM.
     Clean: (correct image, prompt) -> correct answer activations
@@ -134,7 +145,7 @@ def discover_circuits_eap_ig(model, train_dataset, task_name, config, most_confu
     node_scores = {name: 0.0 for name in nodes_map}
 
     # Build CF pairs
-    cf_pairs = build_cf_pairs(train_dataset, task_name, most_confused_map)
+    cf_pairs = build_cf_pairs(train_dataset, task_name)
     np.random.seed(42)
     sample_indices = np.random.choice(len(cf_pairs), min(num_samples, len(cf_pairs)), replace=False)
 

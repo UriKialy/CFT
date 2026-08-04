@@ -87,17 +87,6 @@ CORRUPTION_METHODS = {
 # =============================================================================
 # Metric functions
 # =============================================================================
-def compute_logit_difference(logits, labels):
-    """Logit(GT) - Logit(NextBest). Returns scalar (mean over batch)."""
-    B = logits.shape[0]
-    batch_idx = torch.arange(B, device=logits.device)
-    gt_logits = logits[batch_idx, labels]
-
-    masked = logits.clone()
-    masked[batch_idx, labels] = float("-inf")
-    next_best = masked.max(dim=1).values
-
-    return (gt_logits - next_best).mean()
 
 def compute_log_prob_difference(logits, labels):
     """LogProb(GT) - LogProb(NextBest), after softmax.
@@ -161,7 +150,7 @@ def get_vit_nodes(model):
 # =============================================================================
 # EAP-IG Circuit Discovery (log-prob difference variant)
 # =============================================================================
-def discover_circuits_eap_ig(model, dataset, config, device=None, metric="log_prob_diff",
+def discover_circuits_eap_ig(model, dataset, config, device=None,
                              corruption="patch_shuffle", score_norm="param_count",
                              method="eap-ig"):
     """Discover important circuits using EAP-IG (node-level).
@@ -176,7 +165,7 @@ def discover_circuits_eap_ig(model, dataset, config, device=None, metric="log_pr
         device = next(model.parameters()).device
 
     print(f"\n{'='*70}")
-    print(f"CIRCUIT DISCOVERY -- EAP-IG (metric={metric}, corruption={corruption}, "
+    print(f"CIRCUIT DISCOVERY -- EAP-IG (corruption={corruption}, "
           f"norm={score_norm}, method={method})")
     print(f"{'='*70}")
 
@@ -329,17 +318,7 @@ def discover_circuits_eap_ig(model, dataset, config, device=None, metric="log_pr
 
                 model.zero_grad()
                 out = model(pixel_values=clean_batch)
-                if metric == "cross_entropy":
-                    objective = F.cross_entropy(out.logits, labels_batch)
-                elif metric == "log_prob_diff":
-                    objective = compute_log_prob_difference(out.logits, labels_batch)
-                elif metric == "logit_diff":
-                    objective = compute_logit_difference(out.logits, labels_batch)
-                else:
-                    raise ValueError(
-                        f"Unsupported metric '{metric}'. "
-                        "Choose from: log_prob_diff, logit_diff, cross_entropy."
-                    )
+                objective = compute_log_prob_difference(out.logits, labels_batch)
                 objective.backward()
 
                 for name in batch_scores:

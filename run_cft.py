@@ -87,11 +87,11 @@ def make_serializable(obj):
         return obj.tolist()
     return obj
 
-def build_cft_method_name(method_tag, metric, pretrain_head, corruption, score_norm, method):
-    """Build a stable method name that captures the discovery metric option set."""
+def build_cft_method_name(method_tag, pretrain_head, corruption, score_norm, method):
+    """Build a stable method name from the discovery option set."""
     if method_tag:
         return method_tag
-    parts = ["cft", metric, method]
+    parts = ["cft", "log_prob_diff", method]
     if pretrain_head:
         parts.append("pretrain_head")
     if corruption != "patch_shuffle":
@@ -101,7 +101,7 @@ def build_cft_method_name(method_tag, metric, pretrain_head, corruption, score_n
     return "__".join(parts)
 
 def run_vit(tasks=None, config=None, use_ddp=False, rank=0, local_rank=0, world_size=1,
-            metric="log_prob_diff", pretrain_head=False, corruption="patch_shuffle",
+            pretrain_head=False, corruption="patch_shuffle",
             score_norm="param_count", method="eap-ig", method_tag=None,
             stop_after_epoch=None):
     if config is None:
@@ -110,7 +110,6 @@ def run_vit(tasks=None, config=None, use_ddp=False, rank=0, local_rank=0, world_
         tasks = VTAB_TASKS
     method_name = build_cft_method_name(
         method_tag=method_tag,
-        metric=metric,
         pretrain_head=pretrain_head,
         corruption=corruption,
         score_norm=score_norm,
@@ -170,7 +169,7 @@ def run_vit(tasks=None, config=None, use_ddp=False, rank=0, local_rank=0, world_
                                      "cache", "discovery")
             os.makedirs(cache_dir, exist_ok=True)
             _ph = "ph1" if pretrain_head else "ph0"
-            cache_key = f"{task_name}__{corruption}__{score_norm}__{metric}__{method}__{_ph}"
+            cache_key = f"{task_name}__{corruption}__{score_norm}__log_prob_diff__{method}__{_ph}"
             cache_path = os.path.join(cache_dir, f"{cache_key}.pt")
 
             if os.path.exists(cache_path):
@@ -184,7 +183,7 @@ def run_vit(tasks=None, config=None, use_ddp=False, rank=0, local_rank=0, world_
                 cft_base.eval()
                 circuit_info = discover_circuits_eap_ig(
                     cft_base, train_ds, config, device,
-                    metric=metric, corruption=corruption, score_norm=score_norm,
+                    corruption=corruption, score_norm=score_norm,
                     method=method,
                 )
                 head_state = None
@@ -440,13 +439,9 @@ def run_gemma(tasks=None, config=None, **_unused):
         # Gemma uses CUB-200 (PIL access)
         train_ds, test_ds, num_classes = _load_cub200(config["data_dir"], config)
 
-        # 1) Most-confused class map (hardcoded 5-class table + (c+1) fallback).
-        # ZS eval was ~random (0.6% on CUB-200), so we skip it.
-        most_confused = GU.get_most_confused_class(num_classes, task_name)
-
-        # 2) Circuit discovery (EAP-IG) using clean/CF pairs from 
-        circuit_info = DG.discover_circuits_eap_ig(model, train_ds, task_name,
-                                                    config, most_confused)
+        # Circuit discovery (EAP-IG). CF pairs use a small hardcoded confusion
+        # table inside circuit_discovery_gemma (ZS was ~random anyway).
+        circuit_info = DG.discover_circuits_eap_ig(model, train_ds, task_name, config)
         # 3) Select circuits by parameter budget
         selected_nodes, used_params = DG.select_nodes_by_param_budget(
             circuit_info["sorted_nodes"], circuit_info["nodes_map"],
@@ -488,8 +483,6 @@ if __name__ == "__main__":
                         help="Integrated gradient steps")
     parser.add_argument("--discovery-pct", type=float, default=None,
                         help="%% of training data for circuit discovery")
-    parser.add_argument("--metric", choices=["log_prob_diff", "logit_diff", "cross_entropy"], default="log_prob_diff",
-                        help="Scoring metric for circuit discovery: log_prob_diff | logit_diff | cross_entropy")
     parser.add_argument("--pretrain-head", action="store_true", default=False,
                         help="Pre-train classifier head before discovery")
     parser.add_argument("--corruption",
@@ -545,7 +538,6 @@ if __name__ == "__main__":
             if args.wd is not None: CFT_TASK_CONFIGS[tn]["wd"] = args.wd
             if args.label_smoothing is not None: CFT_TASK_CONFIGS[tn]["label_smoothing"] = args.label_smoothing
 
-    selected_metric = args.metric
 
     # Pick the backbone-specific CONFIG and per-task HP table
     from config import get_backbone_config, get_task_configs
@@ -578,7 +570,6 @@ if __name__ == "__main__":
                 rank=rank,
                 local_rank=local_rank,
                 world_size=world_size,
-                metric=selected_metric,
                 pretrain_head=args.pretrain_head,
                 corruption=args.corruption,
                 score_norm=args.score_norm,

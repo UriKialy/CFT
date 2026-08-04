@@ -100,25 +100,3 @@ def classify_image(image, question):
     output_ids = model.generate(**inputs, max_new_tokens=CONFIG["max_new_tokens"], do_sample=False)
     new_tokens = output_ids[0, inputs["input_ids"].shape[1]:]
     return processor.decode(new_tokens, skip_special_tokens=True).strip()
-
-
-
-
-# Hardcoded most-confused pairs from Gemma-3-4B zero-shot on CUB-200 (5-class sample).
-# Zero-shot acc was 0.6% so the mapping is essentially noise; the fallback
-# (c+1) % num_classes is used for classes not listed.
-_CUB200_MOST_CONFUSED = {
-    0: 66,
-    1:  3,
-    2: 66,
-    3: 66,
-    4: 66,
-}
-
-def get_most_confused_class(num_classes, task_name="cub200"):
-    """Return {class_idx: most_confused_class_idx} for every class.
-
-    Uses a small hardcoded table for CUB-200 and (c+1) % num_classes elsewhere.
-    """
-    table = _CUB200_MOST_CONFUSED if task_name == "cub200" else {}
-    return {c: table.get(c, (c + 1) % num_classes) for c in range(num_classes)}

@@ -60,21 +60,6 @@ def create_channel_shuffled_image(image_tensor, patch_size=16):
     result = patches.permute(0, 3, 1, 4, 2, 5).contiguous()
     return result.view(B, C, H, W)
 
-# ── Logit Difference Metric ───────────────────────────────────────────────
-def compute_logit_difference(logits, labels):
-    """
-    Logit(GT) - Logit(NextBest).
-    Returns scalar (mean over batch) for backward.
-    """
-    B = logits.shape[0]
-    batch_idx = torch.arange(B, device=logits.device)
-    gt_logits = logits[batch_idx, labels]
-
-    masked = logits.clone()
-    masked[batch_idx, labels] = float("-inf")
-    next_best = masked.max(dim=1).values
-
-    return (gt_logits - next_best).mean()
 
 def compute_log_prob_difference(logits, labels):
     """
@@ -300,10 +285,8 @@ def discover_circuits_eap_ig(model, dataset, config):
                 if not name.endswith('_grad') and tensor.requires_grad:
                     grad_handles.append(tensor.register_hook(make_grad_hook(name)))
 
-            # logit_diff = compute_log_prob_difference(out.logits, labels_batch)
-            # logit_diff.backward()
-            loss = F.cross_entropy(out.logits, labels_batch)
-            loss.backward()
+            objective = compute_log_prob_difference(out.logits, labels_batch)
+            objective.backward()
 
             # Accumulate: (clean - corrupt) * grad
             for stage_idx in range(len(depths)):
