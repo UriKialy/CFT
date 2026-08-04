@@ -1,7 +1,7 @@
-# CFT — Circuit Fine-Tuning
+# CFT - Circuit Fine-Tuning
 
 Unified command-line implementation of **Circuit Fine-Tuning (CFT)** for three
-backbones — **ViT, Swin (v2), and Gemma-3-4B** — on three datasets:
+backbones - **ViT, Swin (v2), and Gemma-3-4B** - on three datasets:
 **VTAB-1K, CBIS-DDSM, and CUB-200**.
 
 CFT is a parameter-efficient fine-tuning (PEFT) method that uses
@@ -17,11 +17,11 @@ of the trainable parameter budget.
 For each (backbone, task) pair the pipeline is:
 
 1. **Load** the pretrained backbone with a near-zero-initialized classifier head.
-2. **Discover circuits** — run EAP-IG on a slice of training data. The score of a
+2. **Discover circuits** - run EAP-IG on a slice of training data. The score of a
    node (attention head / MLP) is its average gradient-times-difference between
    *clean* and *corrupted* activations along the integrated-gradient path from
    corrupted to clean inputs. Higher score ⇒ more task-relevant.
-3. **Normalize scores** — MLP scores are divided by `mlp_params / head_params`
+3. **Normalize scores** - MLP scores are divided by `mlp_params / head_params`
    so heads and MLPs are compared per equivalent parameter chunk.
 4. **Select nodes** under a parameter budget (`--budget`, per-task default from
    the task config tables).
@@ -32,7 +32,7 @@ Corrupted inputs are produced by patch-shuffling, gaussian noise,
 channel-shuffling, intensity inversion, or cutout (`--corruption`).
 
 Always-trainable regardless of circuit selection: the classifier head, all
-LayerNorms, and position/patch embeddings — about 0.9 % of ViT-B and 0.3 % of
+LayerNorms, and position/patch embeddings - about 0.9 % of ViT-B and 0.3 % of
 Swinv2-B backbone parameters.
 
 ## Quick start
