@@ -73,10 +73,10 @@ python run_cft.py --backbone vit --dataset vtab --tasks cifar dtd svhn
 --stop-after-epoch <int>          # early-stop cap
 --batch-size <int>
 --cft-batch-size <int>            # batch size for EAP-IG discovery
---ig-steps <int>                  # integrated gradient steps
+--ig-steps <int>                  # integrated gradient steps(1 is equal to EAP)
 --discovery-pct <float>           # % of training data used for discovery
 --corruption {patch_shuffle, gaussian, channel_shuffle, intensity_invert, cutout, multi, multi_med}
---method {eap-ig, eap}            # eap-ig uses the IG path; eap is a single gradient
+--method {eap-ig}            # eap-ig uses the IG path; 
 --method-tag <str>                # label saved in the results JSON
 --lr / --wd / --label-smoothing / --dropout    # per-task overrides
 --ddp                             # DistributedDataParallel (launch with torchrun)
