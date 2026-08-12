@@ -1,4 +1,3 @@
-# pylint: disable=undefined-variable
 """
 Gemma circuit discovery (EAP-IG)
 
