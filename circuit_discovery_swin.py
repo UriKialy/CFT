@@ -1,4 +1,3 @@
-# pylint: disable=undefined-variable
 """
 Swin circuit discovery (EAP-IG and EAP)
 """
