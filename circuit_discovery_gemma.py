@@ -70,7 +70,6 @@ def get_gemma_nodes(model):
     return nodes
 
 # Hardcoded most-confused pairs from Gemma-3-4B zero-shot on CUB-200
-# (5-class sample; ZS acc was 0.6% so signal is weak — fallback covers the rest).
 _CUB200_MOST_CONFUSED = {
     0: 66,
     1:  3,
@@ -104,7 +103,7 @@ def build_cf_pairs(dataset, task_name):
     return pairs
 
 def prepare_vlm_input(image, task_name):
-    """Prepare processor input for a single image with Strategy 3 prompt."""
+    """Prepare processor input for a single image with prompt."""
     question = build_prompt_strategy3(task_name)
     messages = build_messages(image, question)
     inputs = processor.apply_chat_template(
